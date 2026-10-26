@@ -1,0 +1,4 @@
+KEY-TEST.txt
+*.key
+.env
+__pycache__/

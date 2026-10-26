@@ -1,0 +1,3834 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jarod — Tokenomics Arbitrage</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@500;600;700&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --sidebar-w: 252px;
+  --bg-void: #07090f;
+  --bg-sidebar: #0a0d16;
+  --bg-card: #0e1420;
+  --bg-card-hover: #141d2e;
+  --bg-input: #0a0e17;
+  --border: #1b2436;
+  --border-bright: rgba(0, 255, 163, 0.35);
+  --text-primary: #f4f7fb;
+  --text-secondary: #aeb8ca;
+  --text-dim: #6b7892;
+  --accent-green: #00ffa3;
+  --accent-green-dim: rgba(0, 255, 163, 0.14);
+  --accent-red: #ff4d6a;
+  --accent-red-dim: rgba(255, 77, 106, 0.14);
+  --accent-blue: #4d9fff;
+  --accent-blue-dim: rgba(77, 159, 255, 0.14);
+  --accent-amber: #ffb020;
+  --accent-amber-dim: rgba(255, 176, 32, 0.14);
+  --accent-purple: #b794f6;
+}
+
+html, body { height: 100%; }
+
+body {
+  font-family: 'Inter', -apple-system, sans-serif;
+  font-weight: 500;
+  background: var(--bg-void);
+  color: var(--text-primary);
+  min-height: 100vh;
+  overflow-x: hidden;
+  position: relative;
+}
+
+/* faint terminal grid texture */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+  background-size: 42px 42px;
+}
+
+/* ── APP SHELL ── */
+.app-shell { position: relative; z-index: 1; }
+
+/* ── SIDEBAR ── */
+.sidebar {
+  width: var(--sidebar-w);
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  z-index: 60;
+}
+
+.sidebar-resize-handle {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 70;
+  background: transparent;
+}
+.sidebar-resize-handle::after {
+  content: "";
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 3px; height: 36px;
+  border-radius: 2px;
+  background: var(--border-bright);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.sidebar-resize-handle:hover { background: var(--accent-green-dim); }
+.sidebar-resize-handle:hover::after,
+.sidebar-resize-handle.dragging::after { opacity: 1; }
+.sidebar-resize-handle.dragging { background: var(--accent-green-dim); }
+body.resizing-sidebar { cursor: col-resize !important; user-select: none; }
+body.resizing-sidebar * { user-select: none; }
+.sidebar-brand {
+  padding: 22px 20px 18px;
+  border-bottom: 1px solid var(--border);
+}
+.brand-mark {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 700;
+  font-size: 19px;
+  color: var(--text-primary);
+  letter-spacing: -0.4px;
+  line-height: 1.15;
+}
+.brand-mark span { color: var(--accent-green); }
+.brand-sub {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 1.6px;
+  margin-top: 7px;
+}
+
+.sidebar-nav {
+  flex: 1;
+  padding: 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  overflow-y: auto;
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  border-left: 2px solid transparent;
+  transition: background 0.15s, border-color 0.15s;
+}
+.nav-item:hover { background: var(--bg-card-hover); }
+.nav-item.active { background: var(--accent-green-dim); border-left-color: var(--accent-green); }
+.nav-key {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-dim);
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 5px;
+  min-width: 24px;
+  text-align: center;
+}
+.nav-item.active .nav-key {
+  color: var(--accent-green);
+  border-color: var(--border-bright);
+  box-shadow: 0 0 8px rgba(0, 255, 163, 0.35);
+}
+.nav-label {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.nav-item.active .nav-label { color: var(--text-primary); font-weight: 700; }
+.nav-cursor {
+  display: inline-block;
+  width: 6px;
+  height: 13px;
+  margin-left: auto;
+  background: var(--accent-green);
+  box-shadow: 0 0 6px var(--accent-green);
+  animation: blink 1s steps(1) infinite;
+}
+@keyframes blink { 50% { opacity: 0; } }
+
+.sidebar-status {
+  padding: 16px 20px 20px;
+  border-top: 1px solid var(--border);
+}
+.status-row { display: flex; align-items: center; gap: 8px; margin-bottom: 9px; }
+.status-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--accent-green);
+  box-shadow: 0 0 8px var(--accent-green);
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+.status-text {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--accent-green);
+  letter-spacing: 1.2px;
+}
+.status-clock {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+/* ── MAIN ── */
+.main-content { margin-left: var(--sidebar-w); min-width: 0; }
+
+.ticker-container {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: var(--bg-sidebar);
+  border-bottom: 1px solid var(--border);
+  overflow: hidden;
+  height: 36px;
+}
+.ticker-track {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  animation: ticker-scroll 180s linear infinite;
+  width: max-content;
+}
+.ticker-track:hover { animation-play-state: paused; }
+@keyframes ticker-scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.ticker-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 20px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  border-right: 1px solid var(--border);
+  height: 100%;
+}
+.ticker-model { color: var(--text-primary); font-weight: 700; }
+.ticker-provider { color: var(--text-dim); font-size: 10px; font-weight: 600; }
+.ticker-price { color: var(--accent-green); text-shadow: 0 0 8px rgba(0,255,163,0.3); }
+.ticker-ctx { color: var(--text-dim); font-size: 10px; }
+
+.main { padding: 4px 16px 32px; }
+
+.panel { display: none; }
+.panel.active { display: block; }
+
+/* ── GRID ── */
+.grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+.grid-1-2 { display: grid; grid-template-columns: 1fr 2fr; gap: 16px; margin-bottom: 20px; }
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  transition: border-color 0.15s, transform 0.15s;
+}
+.card:hover { border-color: var(--border-bright); }
+
+/* ── INTERACTIVE ROLE-FIT KPI CARDS ── */
+.rf-kpi-card {
+  cursor: pointer;
+  position: relative;
+  transition: border-color 0.18s, transform 0.18s, box-shadow 0.18s, opacity 0.2s;
+  user-select: none;
+}
+.rf-kpi-card::after {
+  content: 'filter';
+  position: absolute;
+  top: 10px; right: 12px;
+  font-size: 9px; font-weight: 700; color: var(--text-dim);
+  text-transform: uppercase; letter-spacing: 0.8px;
+  opacity: 0; transition: opacity 0.15s;
+  font-family: 'JetBrains Mono', monospace;
+}
+.rf-kpi-card:hover { transform: translateY(-2px); border-color: var(--border-bright); }
+.rf-kpi-card:hover::after { opacity: 1; }
+.rf-kpi-card.rf-active {
+  transform: translateY(-2px);
+  border-color: var(--accent-green) !important;
+  box-shadow: 0 0 0 1px var(--accent-green), 0 4px 24px rgba(0,255,163,0.18);
+}
+.rf-kpi-card.rf-active::after {
+  content: '✕ clear';
+  opacity: 1;
+  color: var(--accent-green);
+}
+.rf-kpi-card.rf-dimmed { opacity: 0.35; transform: none; }
+/* Animated table-row filter transition */
+#roleFitTableBody tr { transition: opacity 0.2s; }
+#roleFitTableBody tr.rf-hidden { display: none; }
+/* Filter pill shown above table */
+.rf-filter-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--accent-green-dim); border: 1px solid var(--border-bright);
+  border-radius: 20px; padding: 3px 10px 3px 8px;
+  font-size: 10px; font-weight: 700; color: var(--accent-green);
+  text-transform: uppercase; letter-spacing: 0.7px;
+  font-family: 'JetBrains Mono', monospace;
+  cursor: pointer; transition: background 0.15s;
+  margin-bottom: 8px;
+}
+.rf-filter-pill:hover { background: rgba(0,255,163,0.22); }
+.rf-filter-pill-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent-green); box-shadow: 0 0 6px var(--accent-green); }
+#roleFitFilterPill { min-height: 22px; }
+
+/* Interactive KPI cards */
+.kpi-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+  position: relative;
+}
+.kpi-card:hover { border-color: var(--border-bright); transform: translateY(-1px); }
+.widget .kpi-card { background: transparent; border: none; padding: 0; cursor: pointer; height: 100%; display: flex; flex-direction: column; }
+.widget .kpi-card:hover { transform: none; }
+.widget .kpi-card .kpi-expand { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; }
+.widget .kpi-card.kpi-active .kpi-expand { max-height: none; opacity: 1; margin-top: 8px; }
+.widget .widget-body-pad { display: flex; flex-direction: column; height: 100%; }
+.kpi-card.kpi-active { border-color: var(--accent-green); box-shadow: 0 0 16px rgba(0,255,163,0.15); }
+.kpi-card .kpi-expand {
+  max-height: 0; overflow: hidden; opacity: 0;
+  transition: max-height 0.3s ease, opacity 0.25s ease, margin-top 0.25s ease;
+  margin-top: 0;
+}
+.kpi-card.kpi-active .kpi-expand { max-height: 200px; opacity: 1; margin-top: 10px; }
+.kpi-expand-row { display: flex; justify-content: space-between; align-items: center; padding: 3px 0; font-size: 11px; font-weight: 600; }
+.kpi-expand-label { color: var(--text-dim); }
+.kpi-expand-value { font-family: 'JetBrains Mono', monospace; font-weight: 700; }
+.kpi-card .kpi-hint {
+  position: absolute; top: 10px; right: 12px;
+  font-size: 9px; font-weight: 700; color: var(--text-dim);
+  text-transform: uppercase; letter-spacing: 0.6px;
+  opacity: 0; transition: opacity 0.15s;
+}
+.kpi-card:hover .kpi-hint { opacity: 1; }
+
+/* Provider chips */
+.provider-chips { display: none; }
+
+/* ── WIDGET SYSTEM ── */
+.widget-canvas {
+  position: relative;
+  min-height: 700px;
+}
+.widget {
+  position: absolute;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: box-shadow 0.15s;
+  z-index: 1;
+}
+.widget:hover { border-color: var(--border-bright); }
+.widget.widget-dragging {
+  z-index: 100 !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 0 2px var(--accent-green);
+  opacity: 0.92;
+  transition: none;
+}
+.widget.widget-resizing { z-index: 100 !important; transition: none; }
+.widget-hdr {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 12px;
+  cursor: grab;
+  user-select: none;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  background: var(--bg-card);
+}
+.widget-hdr:active { cursor: grabbing; }
+.widget-hdr-title {
+  font-size: 10px; font-weight: 700; color: var(--text-dim);
+  text-transform: uppercase; letter-spacing: 1px;
+}
+.widget-hdr-actions { display: flex; gap: 6px; align-items: center; }
+.widget-hdr-btn {
+  width: 20px; height: 20px; border-radius: 3px;
+  border: 1px solid var(--border); background: transparent;
+  color: var(--text-dim); font-size: 11px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.1s; font-weight: 700;
+}
+.widget-hdr-btn:hover { border-color: var(--border-bright); color: var(--text-primary); background: var(--bg-card-hover); }
+.widget-body { flex: 1; overflow: auto; min-height: 0; }
+.widget-body-pad { padding: 12px; }
+
+/* resize handles */
+.widget .rh { position: absolute; z-index: 10; }
+.widget .rh-n { top: -3px; left: 8px; right: 8px; height: 6px; cursor: n-resize; }
+.widget .rh-s { bottom: -3px; left: 8px; right: 8px; height: 6px; cursor: s-resize; }
+.widget .rh-w { left: -3px; top: 8px; bottom: 8px; width: 6px; cursor: w-resize; }
+.widget .rh-e { right: -3px; top: 8px; bottom: 8px; width: 6px; cursor: e-resize; }
+.widget .rh-nw { top: -4px; left: -4px; width: 10px; height: 10px; cursor: nw-resize; }
+.widget .rh-ne { top: -4px; right: -4px; width: 10px; height: 10px; cursor: ne-resize; }
+.widget .rh-sw { bottom: -4px; left: -4px; width: 10px; height: 10px; cursor: sw-resize; }
+.widget .rh-se { bottom: -4px; right: -4px; width: 10px; height: 10px; cursor: se-resize; }
+body.widget-interacting { user-select: none; }
+body.widget-interacting * { user-select: none; }
+
+.widget-reset-btn {
+  position: absolute; top: 4px; right: 4px; z-index: 5;
+  font-size: 9px; font-weight: 700; color: var(--text-dim);
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 4px; padding: 3px 8px; cursor: pointer;
+  text-transform: uppercase; letter-spacing: 0.5px;
+  transition: all 0.15s; font-family: 'Inter', sans-serif;
+  opacity: 0.5;
+}
+.widget-reset-btn:hover { color: var(--accent-green); border-color: var(--border-bright); opacity: 1; }
+.card-header {
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--text-dim);
+  margin-bottom: 9px;
+}
+.card-value {
+  font-family: 'Space Grotesk', monospace;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.card-value.green { color: var(--accent-green); text-shadow: 0 0 16px rgba(0, 255, 163, 0.35); }
+.card-value.blue { color: var(--accent-blue); text-shadow: 0 0 16px rgba(77, 159, 255, 0.3); }
+.card-value.amber { color: var(--accent-amber); text-shadow: 0 0 16px rgba(255, 176, 32, 0.3); }
+.card-sub { font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-top: 5px; }
+
+/* ── TABLES ── */
+.table-wrap { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.table-title {
+  padding: 13px 16px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  border-bottom: 1px solid var(--border);
+}
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+thead th {
+  text-align: left;
+  padding: 9px 12px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: var(--bg-card);
+}
+tbody td {
+  padding: 9px 12px;
+  border-bottom: 1px solid rgba(27, 36, 54, 0.6);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 600;
+}
+tbody tr:hover { background: var(--bg-card-hover); }
+tbody tr.row-selected { background: var(--accent-green-dim); box-shadow: inset 3px 0 0 var(--accent-green); }
+tbody tr.row-selected:hover { background: var(--accent-green-dim); }
+.text-right { text-align: right; }
+.mono { font-family: 'JetBrains Mono', monospace; }
+.dim { color: var(--text-dim); }
+.green { color: var(--accent-green); }
+.red { color: var(--accent-red); }
+.blue { color: var(--accent-blue); }
+.amber { color: var(--accent-amber); }
+.purple { color: var(--accent-purple); }
+
+/* cost gauge mini-bar */
+.cost-gauge {
+  width: 50px; height: 4px;
+  background: var(--bg-input);
+  border-radius: 2px;
+  overflow: hidden;
+  display: inline-block;
+  margin-left: 9px;
+  vertical-align: middle;
+}
+.cost-gauge-fill { height: 100%; border-radius: 2px; }
+
+/* ── SECTION TITLE ── */
+.section-title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: 0.2px;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.section-title::before {
+  content: "";
+  width: 8px; height: 8px;
+  background: var(--accent-green);
+  box-shadow: 0 0 8px var(--accent-green);
+  border-radius: 1px;
+}
+
+/* ── FORMS ── */
+.form-group { margin-bottom: 13px; }
+.form-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 5px;
+}
+select, input[type="number"], input[type="text"], input[type="file"] {
+  width: 100%;
+  padding: 9px 10px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+}
+select:focus, input:focus { outline: none; border-color: var(--accent-green); box-shadow: 0 0 0 3px var(--accent-green-dim); }
+select option { background: var(--bg-sidebar); }
+
+.btn {
+  padding: 9px 16px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  transition: all 0.15s;
+  font-family: 'Inter', sans-serif;
+}
+.btn-primary {
+  background: var(--accent-green);
+  color: #03130c;
+  border-color: var(--accent-green);
+}
+.btn-primary:hover { box-shadow: 0 0 16px rgba(0,255,163,0.4); transform: translateY(-1px); }
+.btn-secondary { background: transparent; color: var(--text-secondary); }
+.btn-secondary:hover { background: var(--bg-card-hover); color: var(--text-primary); }
+.btn-danger { background: transparent; color: var(--accent-red); border-color: var(--accent-red); }
+.btn-danger:hover { background: var(--accent-red-dim); }
+
+/* ── RECOMMENDATION CARD ── */
+.rec-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 20px; }
+.rec-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+.rec-role { font-family: 'Space Grotesk', sans-serif; font-size: 19px; font-weight: 700; color: var(--text-primary); }
+.rec-tier {
+  padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.6px;
+}
+.tier-frontier { background: var(--accent-blue-dim); color: var(--accent-blue); border: 1px solid rgba(77,159,255,0.35); }
+.tier-standard { background: var(--accent-green-dim); color: var(--accent-green); border: 1px solid rgba(0,255,163,0.35); }
+.tier-efficiency { background: var(--accent-amber-dim); color: var(--accent-amber); border: 1px solid rgba(255,176,32,0.35); }
+
+.fit-badge { padding: 3px 9px; border-radius: 4px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: inline-block; }
+.fit-over { background: var(--accent-amber-dim); color: var(--accent-amber); border: 1px solid rgba(255,176,32,0.35); }
+.fit-under { background: var(--accent-red-dim); color: var(--accent-red); border: 1px solid rgba(255,77,106,0.35); }
+.fit-matched { background: var(--accent-green-dim); color: var(--accent-green); border: 1px solid rgba(0,255,163,0.35); }
+
+.btn-mini { padding: 5px 10px; font-size: 10px; border-radius: 4px; border: 1px solid var(--border); cursor: pointer; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; font-family: 'Inter', sans-serif; background: transparent; }
+.btn-mini-approve { color: var(--accent-green); border-color: rgba(0,255,163,0.35); }
+.btn-mini-approve:hover { background: var(--accent-green-dim); }
+.btn-mini-reject { color: var(--accent-red); border-color: rgba(255,77,106,0.35); }
+.btn-mini-reject:hover { background: var(--accent-red-dim); }
+
+.rec-meta { display: flex; gap: 24px; margin-bottom: 16px; font-size: 12px; font-weight: 600; color: var(--text-secondary); flex-wrap: wrap; }
+.rec-meta span { display: flex; align-items: center; gap: 4px; }
+.rec-models { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.rec-model-card { background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; padding: 13px; }
+.rec-model-name { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 14px; margin-bottom: 3px; }
+.rec-model-provider { font-size: 11px; font-weight: 600; color: var(--text-dim); margin-bottom: 9px; }
+.rec-model-cost {
+  font-family: 'JetBrains Mono', monospace; font-size: 21px; font-weight: 700;
+  color: var(--accent-green); text-shadow: 0 0 12px rgba(0,255,163,0.3);
+}
+.rec-model-cost-label { font-size: 10px; font-weight: 600; color: var(--text-dim); }
+.rec-reasoning {
+  font-size: 12px; font-weight: 600; color: var(--text-secondary);
+  padding: 11px 13px; background: var(--bg-input); border-radius: 5px;
+  border-left: 3px solid var(--accent-green); margin-bottom: 11px;
+}
+.rec-upgrade { font-size: 11px; font-weight: 700; color: var(--accent-amber); }
+
+/* Onboarding */
+.ob-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 20px; }
+.ob-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+.ob-role { font-family: 'Space Grotesk', sans-serif; font-size: 19px; font-weight: 700; color: var(--text-primary); }
+.ob-multiplier {
+  font-family: 'JetBrains Mono', monospace; font-size: 22px; font-weight: 800;
+  padding: 6px 14px; border-radius: 6px;
+  background: var(--accent-blue-dim); color: var(--accent-blue); border: 1px solid rgba(77,159,255,0.35);
+}
+.ob-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-bottom: 18px; }
+.ob-kpi { background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; text-align: center; }
+.ob-kpi-value { font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 800; color: var(--text-primary); }
+.ob-kpi-label { font-size: 10px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.6px; margin-top: 2px; }
+.ob-phases { margin-bottom: 18px; }
+.ob-phase { display: flex; align-items: stretch; margin-bottom: 6px; }
+.ob-phase-bar {
+  flex: 1; background: var(--bg-input); border: 1px solid var(--border); border-radius: 4px;
+  padding: 8px 12px; display: flex; justify-content: space-between; align-items: center;
+  position: relative; overflow: hidden;
+}
+.ob-phase-fill {
+  position: absolute; left: 0; top: 0; bottom: 0;
+  background: var(--accent-green-dim); border-radius: 4px 0 0 4px;
+  transition: width 0.6s ease;
+}
+.ob-phase-label { font-size: 12px; font-weight: 700; color: var(--text-primary); position: relative; z-index: 1; }
+.ob-phase-days { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; color: var(--accent-green); position: relative; z-index: 1; }
+.ob-phase-desc { font-size: 10px; color: var(--text-dim); font-weight: 600; margin-top: 2px; position: relative; z-index: 1; }
+.ob-milestones { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+.ob-milestone {
+  background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px;
+  padding: 8px 12px; flex: 1; min-width: 130px;
+}
+.ob-milestone-day { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 800; color: var(--accent-blue); }
+.ob-milestone-label { font-size: 11px; font-weight: 700; color: var(--text-primary); margin-top: 2px; }
+.ob-milestone-desc { font-size: 10px; font-weight: 600; color: var(--text-dim); margin-top: 1px; }
+.ob-risks { margin-bottom: 14px; }
+.ob-risk { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 12px; font-weight: 600; }
+.ob-risk-badge {
+  font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;
+  padding: 2px 7px; border-radius: 3px; flex-shrink: 0;
+}
+.ob-risk-badge.high { background: rgba(255,77,77,0.15); color: #ff4d4d; }
+.ob-risk-badge.medium { background: var(--accent-amber-dim); color: var(--accent-amber); }
+.ob-risk-badge.low { background: var(--accent-green-dim); color: var(--accent-green); }
+.ob-factors { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin-bottom: 14px; }
+.ob-factor { background: var(--bg-input); border: 1px solid var(--border); border-radius: 5px; padding: 8px 10px; }
+.ob-factor-label { font-size: 10px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; }
+.ob-factor-value { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 800; color: var(--text-primary); margin-top: 2px; }
+.ob-reasoning { font-size: 12px; font-weight: 600; color: var(--text-secondary); line-height: 1.6; padding: 10px 12px; background: var(--bg-input); border-radius: 6px; border-left: 3px solid var(--accent-blue); }
+.rec-tasks { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 13px; }
+.rec-task-tag {
+  padding: 4px 9px; background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: 4px; font-size: 11px; font-weight: 600; color: var(--text-secondary);
+}
+
+/* ── ARBITRAGE RESULT ── */
+.arb-card {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px;
+  padding: 16px; margin-bottom: 10px; display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1fr; gap: 16px; align-items: center;
+  transition: border-color 0.15s;
+}
+.arb-card:hover { border-color: var(--border-bright); }
+.arb-switch { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; flex-wrap: wrap; }
+.arb-arrow { color: var(--accent-green); font-size: 16px; text-shadow: 0 0 8px var(--accent-green); }
+.arb-metric-label { font-size: 10px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.6px; }
+.arb-metric-value { font-family: 'JetBrains Mono', monospace; font-size: 16px; font-weight: 700; }
+
+/* ── BAR CHART (CSS ONLY) ── */
+.bar-chart { display: flex; flex-direction: column; gap: 7px; }
+.bar-row { display: flex; align-items: center; gap: 10px; }
+.bar-label { width: 120px; font-size: 12px; font-weight: 600; color: var(--text-secondary); text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bar-track { flex: 1; height: 22px; background: var(--bg-input); border-radius: 4px; overflow: hidden; position: relative; }
+.bar-fill { height: 100%; border-radius: 4px; transition: width 0.6s ease; display: flex; align-items: center; padding-left: 8px; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #03130c; font-weight: 700; min-width: 40px; }
+.bar-fill.fill-blue { background: var(--accent-blue); }
+.bar-fill.fill-green { background: var(--accent-green); box-shadow: 0 0 12px rgba(0,255,163,0.35); }
+.bar-fill.fill-amber { background: var(--accent-amber); }
+.bar-fill.fill-purple { background: var(--accent-purple); }
+.bar-fill.fill-red { background: var(--accent-red); }
+
+/* ── STATUS ── */
+.status-msg { padding: 9px 12px; border-radius: 5px; font-size: 12px; font-weight: 700; margin-top: 9px; display: none; }
+.status-msg.show { display: block; }
+.status-msg.success { background: var(--accent-green-dim); color: var(--accent-green); }
+.status-msg.error { background: var(--accent-red-dim); color: var(--accent-red); }
+
+/* ── EMPTY STATES ── */
+.empty-state { text-align: center; padding: 60px 20px; color: var(--text-dim); }
+.empty-state .icon { font-size: 36px; margin-bottom: 12px; }
+.empty-state .title { font-size: 14px; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px; }
+.empty-state .sub { font-size: 12px; font-weight: 600; }
+.empty-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-void); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* ── ACTIVATION OVERLAY ── */
+.activation-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: var(--bg-void);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.activation-box {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 40px;
+  max-width: 440px;
+  width: 90%;
+  text-align: center;
+}
+.activation-box .brand-mark { font-size: 24px; margin-bottom: 6px; }
+.activation-box .brand-sub { margin-bottom: 28px; }
+.activation-input {
+  width: 100%;
+  padding: 12px 14px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  text-align: center;
+  letter-spacing: 1px;
+}
+.activation-input:focus { outline: none; border-color: var(--accent-green); box-shadow: 0 0 0 3px var(--accent-green-dim); }
+.activation-error {
+  font-size: 12px; font-weight: 600; color: var(--accent-red);
+  padding: 8px; background: var(--accent-red-dim); border-radius: 5px;
+  margin-bottom: 12px; display: none;
+}
+.activation-error.show { display: block; }
+
+/* ── SETTINGS PANEL ── */
+.settings-section {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+.settings-section-title {
+  font-size: 11px; font-weight: 700; color: var(--text-dim);
+  text-transform: uppercase; letter-spacing: 1px;
+  margin-bottom: 14px; padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.settings-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 0; gap: 12px;
+}
+.settings-label { font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+.settings-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px; font-weight: 600; color: var(--text-primary);
+}
+.settings-key-input {
+  flex: 1; max-width: 360px;
+  padding: 8px 10px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text-primary);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px; font-weight: 600;
+}
+.settings-key-input:focus { outline: none; border-color: var(--accent-green); }
+.settings-key-input::placeholder { color: var(--text-dim); }
+
+/* ── ESTIMATE DISCLAIMER ── */
+.estimate-disclaimer {
+  font-size: 10px; font-weight: 600; color: var(--text-dim);
+  padding: 6px 10px; margin-top: 8px;
+  background: rgba(255, 176, 32, 0.06);
+  border: 1px solid rgba(255, 176, 32, 0.15);
+  border-radius: 4px;
+  line-height: 1.5;
+}
+.estimate-disclaimer::before { content: "⚠ "; }
+
+/* ── AI DISABLED STATE ── */
+.ai-disabled-notice {
+  padding: 10px 14px;
+  background: var(--accent-amber-dim);
+  border: 1px solid rgba(255, 176, 32, 0.25);
+  border-radius: 6px;
+  font-size: 12px; font-weight: 600; color: var(--accent-amber);
+  margin-top: 14px;
+  display: flex; align-items: center; gap: 8px;
+}
+.btn:disabled, .btn[disabled] {
+  opacity: 0.45; cursor: not-allowed; pointer-events: none;
+}
+
+/* ── ROI CALCULATOR ── */
+.roi-tabs{display:flex;gap:0;margin-bottom:20px;border:1px solid var(--border);border-radius:7px;overflow:hidden;}
+.roi-tab{flex:1;display:flex;flex-direction:column;align-items:flex-start;gap:3px;padding:13px 18px;background:var(--bg-input);border:none;cursor:pointer;color:var(--text-dim);font-family:'Inter',sans-serif;font-size:13px;font-weight:700;transition:all .15s;border-right:1px solid var(--border);text-align:left;}
+.roi-tab:last-child{border-right:none;}
+.roi-tab:hover{background:var(--bg-card);color:var(--text-secondary);}
+.roi-tab.active{background:var(--bg-card-hover);color:var(--text-primary);box-shadow:inset 0 -2px 0 var(--accent-green);}
+.roi-tab-top{display:flex;align-items:center;gap:9px;}
+.roi-tab-badge{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:800;padding:2px 7px;border-radius:3px;text-transform:uppercase;letter-spacing:.5px;background:var(--accent-green-dim);color:var(--accent-green);border:1px solid rgba(0,255,163,.2);}
+.roi-tab.active .roi-tab-badge{background:var(--accent-green);color:#03130c;}
+.roi-tab-desc{font-size:11px;font-weight:600;color:var(--text-dim);padding-left:2px;line-height:1.3;}
+.roi-tab.active .roi-tab-desc{color:var(--text-secondary);}
+.roi-grid{display:grid;grid-template-columns:5fr 7fr;gap:16px;margin-bottom:16px;align-items:start;}
+.roi-agent-sec{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:800;color:var(--accent-green);text-transform:uppercase;letter-spacing:.8px;margin:14px 0 9px;display:flex;align-items:center;gap:8px;}
+.roi-agent-sec::before{content:"";width:12px;height:1px;background:var(--accent-green);}
+.roi-agent-sec:first-child{margin-top:0;}
+.roi-form-row-2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.roi-input-wrap{position:relative;}
+.roi-input-wrap input{padding-right:44px;}
+.roi-input-suffix{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:var(--text-dim);pointer-events:none;}
+input[type="range"]{-webkit-appearance:none;appearance:none;width:100%;height:4px;background:var(--border);border:none;border-radius:2px;cursor:pointer;padding:0;}
+input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--accent-green);box-shadow:0 0 8px rgba(0,255,163,.5);cursor:pointer;}
+.roi-cost-lines{margin-bottom:12px;}
+.roi-cost-line{display:flex;justify-content:space-between;align-items:flex-start;padding:7px 0;border-bottom:1px solid rgba(27,36,54,.5);font-size:13px;}
+.roi-cost-line:last-child{border-bottom:none;}
+.roi-cost-meta{display:flex;flex-direction:column;gap:1px;}
+.roi-cost-label{color:var(--text-secondary);font-weight:600;}
+.roi-cost-note{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-dim);font-weight:600;}
+.roi-cost-val{font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--text-primary);white-space:nowrap;}
+.roi-total-box{display:flex;justify-content:space-between;align-items:center;padding:11px 14px;background:var(--bg-input);border:1px solid var(--border-bright);border-radius:6px;margin-bottom:14px;}
+.roi-total-lbl{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:var(--text-dim);}
+.roi-total-val{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:800;color:var(--text-primary);}
+.roi-kpi-trio{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;}
+.roi-kpi-t{background:var(--bg-input);border:1px solid var(--border);border-radius:6px;padding:10px 12px;text-align:center;}
+.roi-kpi-val{font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:800;color:var(--text-primary);line-height:1.2;}
+.roi-kpi-val.g{color:var(--accent-green);text-shadow:0 0 12px rgba(0,255,163,.35);}
+.roi-kpi-val.a{color:var(--accent-amber);}
+.roi-kpi-val.r{color:var(--accent-red);}
+.roi-kpi-val.b{color:var(--accent-blue);}
+.roi-kpi-lbl{font-size:9px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.6px;margin-top:3px;}
+.roi-tok-note{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;color:var(--text-dim);padding:7px 9px;background:var(--bg-input);border-radius:4px;border-left:2px solid rgba(0,255,163,.3);margin-top:8px;line-height:1.5;}
+.roi-comp-sec{border-top:1px solid var(--border);padding-top:12px;margin-top:12px;}
+.roi-comp-hdr{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:800;color:var(--text-dim);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;}
+.roi-comp-bar-lbl{display:flex;justify-content:space-between;margin-bottom:4px;}
+.roi-bar-track{height:6px;background:var(--bg-void);border-radius:3px;overflow:hidden;}
+.roi-bar-fill{height:100%;border-radius:3px;transition:width .4s ease;}
+.fill-blue{background:var(--accent-blue);box-shadow:0 0 8px rgba(77,159,255,.35);}
+.fill-amber{background:var(--accent-amber);box-shadow:0 0 8px rgba(255,176,32,.35);}
+.fill-green{background:var(--accent-green);box-shadow:0 0 8px rgba(0,255,163,.35);}
+.roi-savings-box{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--accent-green-dim);border:1px solid rgba(0,255,163,.25);border-radius:6px;margin-top:8px;}
+.roi-savings-box.neg{background:var(--accent-red-dim);border-color:rgba(255,77,106,.25);}
+.roi-savings-lbl{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:var(--accent-green);}
+.roi-savings-box.neg .roi-savings-lbl{color:var(--accent-red);}
+.roi-savings-val{font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:800;color:var(--accent-green);text-shadow:0 0 16px rgba(0,255,163,.4);}
+.roi-savings-box.neg .roi-savings-val{color:var(--accent-red);text-shadow:0 0 16px rgba(255,77,106,.4);}
+.roi-chart-card{margin-top:16px;}
+.roi-chart-legend{display:flex;gap:20px;margin-bottom:10px;flex-wrap:wrap;}
+.roi-leg-item{display:flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.4px;}
+.roi-leg-line{width:22px;height:2px;border-radius:1px;flex-shrink:0;}
+.roi-leg-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.roi-chart-wrap{background:var(--bg-input);border:1px solid var(--border);border-radius:5px;padding:12px 12px 8px;overflow:hidden;}
+.roi-chart-foot{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:600;color:var(--text-dim);margin-top:8px;text-align:right;}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 900px) {
+  .roi-grid{grid-template-columns:1fr;}
+  .roi-tabs{flex-direction:column;}
+  .roi-tab{border-right:none;border-bottom:1px solid var(--border);}
+  .roi-tab:last-child{border-bottom:none;}
+  .sidebar { width: 100%; height: auto; position: static; flex-direction: row; align-items: center; }
+  .main-content { margin-left: 0; }
+  .sidebar-brand { border-bottom: none; border-right: 1px solid var(--border); padding: 12px 16px; }
+  .sidebar-nav { flex-direction: row; overflow-x: auto; padding: 8px 12px; }
+  .nav-item { flex-shrink: 0; }
+  .nav-cursor { display: none; }
+  .sidebar-status { display: none; }
+  .sidebar-resize-handle { display: none; }
+  .grid-4 { grid-template-columns: repeat(2, 1fr); }
+  .grid-3 { grid-template-columns: 1fr; }
+  .grid-2 { grid-template-columns: 1fr; }
+  .grid-1-2 { grid-template-columns: 1fr; }
+  .arb-card { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="app-shell" id="appShell">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-mark">JAROD <span>TOKENOMICS</span></div>
+      <div class="brand-sub">Arbitrage Tool</div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-item active" data-tab="market" onclick="switchTab('market')">
+        <span class="nav-key">F1</span><span class="nav-label">Market</span><span class="nav-cursor"></span>
+      </div>
+      <div class="nav-item" data-tab="analytics" onclick="switchTab('analytics')">
+        <span class="nav-key">F2</span><span class="nav-label">Cost Analytics</span>
+      </div>
+      <div class="nav-item" data-tab="arbitrage" onclick="switchTab('arbitrage')">
+        <span class="nav-key">F3</span><span class="nav-label">Arbitrage</span>
+      </div>
+      <div class="nav-item" data-tab="recommend" onclick="switchTab('recommend')">
+        <span class="nav-key">F4</span><span class="nav-label">Role Recommender</span>
+      </div>
+      <div class="nav-item" data-tab="data" onclick="switchTab('data')">
+        <span class="nav-key">F5</span><span class="nav-label">Data Manager</span>
+      </div>
+      <div class="nav-item" data-tab="insights" onclick="switchTab('insights')">
+        <span class="nav-key">F6</span><span class="nav-label">Insights</span>
+      </div>
+      <div class="nav-item" data-tab="onboard" onclick="switchTab('onboard')">
+        <span class="nav-key">F7</span><span class="nav-label">Onboarding</span>
+      </div>
+      <div class="nav-item" data-tab="settings" onclick="switchTab('settings')">
+        <span class="nav-key">F8</span><span class="nav-label">Settings</span>
+      </div>
+    </nav>
+    <div class="sidebar-actions" style="padding:8px 12px; border-top:1px solid var(--border); display:flex; flex-direction:column; gap:6px;">
+      <select id="providerFilter" onchange="onProviderFilterChange()" style="width:100%; padding:7px 10px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.6px;">
+        <option value="">Select Provider…</option>
+      </select>
+      <button class="btn btn-primary" id="refreshBtn" onclick="refreshPricing()" style="font-size:10px; padding:8px 12px; width:100%; letter-spacing:0.5px;">↻ Refresh Pricing</button>
+      <button class="btn btn-secondary" onclick="resetWidgetLayout()" style="font-size:10px; padding:6px 12px; width:100%;">↺ Reset Layout</button>
+      <div id="refreshStatus" style="font-size:10px; font-weight:600; color:var(--text-dim); margin-top:2px; line-height:1.4; word-break:break-word;"></div>
+    </div>
+    <div class="sidebar-status">
+      <div class="status-row">
+        <span class="status-dot"></span>
+        <span class="status-text">LIVE</span>
+      </div>
+      <div class="status-clock" id="headerTime"></div>
+    </div>
+    <div class="sidebar-resize-handle" id="sidebarResizeHandle" title="Drag to resize"></div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main-content">
+
+    <div class="ticker-container">
+      <div class="ticker-track" id="tickerTrack"></div>
+    </div>
+
+    <div class="main">
+
+      <!-- ═══════ MARKET PANEL ═══════ -->
+      <div class="panel active" id="panel-market">
+
+        <div id="proposalsSection" style="display:none; margin-bottom:12px;">
+          <div class="table-wrap">
+            <div class="table-title" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+              <span>Pending Pricing Proposals <span class="dim" style="font-weight:600;" id="proposalsCount"></span></span>
+              <span style="display:flex; gap:8px; align-items:center;">
+                <select id="proposalsProviderFilter" onchange="onProposalsFilterChange()" style="padding:6px 10px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.6px; min-width:180px;">
+                  <option value="">All Providers</option>
+                </select>
+                <button class="btn btn-danger" onclick="rejectAllProposals()" style="font-size:10px; padding:6px 12px;">✕ Reject All</button>
+                <button class="btn btn-primary" onclick="approveSafeProposals()" style="font-size:10px; padding:6px 12px;">Approve All Safe</button>
+              </span>
+            </div>
+            <div style="max-height: 260px; overflow-y: auto;">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Provider</th>
+                    <th>Model</th>
+                    <th class="text-right">Current</th>
+                    <th class="text-right">Proposed</th>
+                    <th class="text-right">Change</th>
+                    <th>Status</th>
+                    <th class="text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="proposalsTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="widget-canvas" id="widgetCanvas">
+
+          <!-- KPI: Models Tracked -->
+          <div class="widget" id="w-kpi1" data-wid="kpi1">
+            <div class="rh rh-n"></div><div class="rh rh-s"></div><div class="rh rh-w"></div><div class="rh rh-e"></div>
+            <div class="rh rh-nw"></div><div class="rh rh-ne"></div><div class="rh rh-sw"></div><div class="rh rh-se"></div>
+            <div class="widget-hdr"><span class="widget-hdr-title">Models Tracked</span></div>
+            <div class="widget-body widget-body-pad" id="kpiBody1"></div>
+          </div>
+          <!-- KPI: Avg Input -->
+          <div class="widget" id="w-kpi2" data-wid="kpi2">
+            <div class="rh rh-n"></div><div class="rh rh-s"></div><div class="rh rh-w"></div><div class="rh rh-e"></div>
+            <div class="rh rh-nw"></div><div class="rh rh-ne"></div><div class="rh rh-sw"></div><div class="rh rh-se"></div>
+            <div class="widget-hdr"><span class="widget-hdr-title">Avg Input Cost</span></div>
+            <div class="widget-body widget-body-pad" id="kpiBody2"></div>
+          </div>
+          <!-- KPI: Avg Output -->
+          <div class="widget" id="w-kpi3" data-wid="kpi3">
+            <div class="rh rh-n"></div><div class="rh rh-s"></div><div class="rh rh-w"></div><div class="rh rh-e"></div>
+            <div class="rh rh-nw"></div><div class="rh rh-ne"></div><div class="rh rh-sw"></div><div class="rh rh-se"></div>
+            <div class="widget-hdr"><span class="widget-hdr-title">Avg Output Cost</span></div>
+            <div class="widget-body widget-body-pad" id="kpiBody3"></div>
+          </div>
+          <!-- KPI: Lowest Input -->
+          <div class="widget" id="w-kpi4" data-wid="kpi4">
+            <div class="rh rh-n"></div><div class="rh rh-s"></div><div class="rh rh-w"></div><div class="rh rh-e"></div>
+            <div class="rh rh-nw"></div><div class="rh rh-ne"></div><div class="rh rh-sw"></div><div class="rh rh-se"></div>
+            <div class="widget-hdr"><span class="widget-hdr-title">Lowest Input</span></div>
+            <div class="widget-body widget-body-pad" id="kpiBody4"></div>
+          </div>
+
+          <!-- Model Table widget -->
+          <div class="widget" id="w-table" data-wid="table">
+            <div class="rh rh-n"></div><div class="rh rh-s"></div><div class="rh rh-w"></div><div class="rh rh-e"></div>
+            <div class="rh rh-nw"></div><div class="rh rh-ne"></div><div class="rh rh-sw"></div><div class="rh rh-se"></div>
+            <div class="widget-hdr">
+              <span class="widget-hdr-title">Model Pricing</span>
+              <span class="dim" id="pricingFreshnessLabel" style="font-size:9px; font-weight:600; text-transform:none; letter-spacing:0;"></span>
+            </div>
+            <div class="widget-body" id="marketTableContainer">
+              <div id="marketTableEmpty" style="display:flex; align-items:center; justify-content:center; height:100%; min-height:200px;">
+                <div class="empty-state" style="padding:30px 20px;">
+                  <div class="icon">📋</div>
+                  <div class="sub">Select a provider above to view model pricing.</div>
+                </div>
+              </div>
+              <div id="marketTableInner" style="display:none; overflow-y:auto; height:100%;">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Provider</th>
+                      <th>Model</th>
+                      <th>Tier</th>
+                      <th class="text-right">Input / 1M</th>
+                      <th class="text-right">Output / 1M</th>
+                      <th class="text-right">Cached / 1M</th>
+                      <th class="text-right">Context</th>
+                      <th class="text-right">Effective $/1K out</th>
+                    </tr>
+                  </thead>
+                  <tbody id="marketTableBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Donut widget -->
+          <div class="widget" id="w-donut" data-wid="donut">
+            <div class="rh rh-n"></div><div class="rh rh-s"></div><div class="rh rh-w"></div><div class="rh rh-e"></div>
+            <div class="rh rh-nw"></div><div class="rh rh-ne"></div><div class="rh rh-sw"></div><div class="rh rh-se"></div>
+            <div class="widget-hdr">
+              <span class="widget-hdr-title">Cost Breakdown</span>
+              <span class="dim" id="donutSubtitle" style="font-size:9px; font-weight:600; text-transform:none; letter-spacing:0;"></span>
+            </div>
+            <div class="widget-body widget-body-pad">
+              <div id="marketDonutWrap" style="display:flex; align-items:center; gap:14px; flex-wrap:wrap; min-height:150px;"></div>
+            </div>
+          </div>
+
+          <!-- Trend widget -->
+          <div class="widget" id="w-trend" data-wid="trend">
+            <div class="rh rh-n"></div><div class="rh rh-s"></div><div class="rh rh-w"></div><div class="rh rh-e"></div>
+            <div class="rh rh-nw"></div><div class="rh rh-ne"></div><div class="rh rh-sw"></div><div class="rh rh-se"></div>
+            <div class="widget-hdr">
+              <span class="widget-hdr-title">Cost Trend</span>
+              <span class="dim" id="trendSubtitle" style="font-size:9px; font-weight:600; text-transform:none; letter-spacing:0;"></span>
+            </div>
+            <div class="widget-body widget-body-pad">
+              <div id="marketTrendWrap" style="min-height:150px; display:flex; align-items:center; justify-content:center;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════ ANALYTICS PANEL ═══════ -->
+      <div class="panel" id="panel-analytics">
+        <div class="section-title">Cost Analytics</div>
+        <div id="analyticsContent" style="display:none;">
+          <div class="grid-4" id="analyticsKpis"></div>
+          <div class="grid-2">
+            <div>
+              <div class="table-wrap">
+                <div class="table-title">Spend by Department</div>
+                <div id="deptChart" style="padding: 16px;"></div>
+              </div>
+            </div>
+            <div>
+              <div class="table-wrap">
+                <div class="table-title">Spend by Model</div>
+                <div id="modelChart" style="padding: 16px;"></div>
+              </div>
+            </div>
+          </div>
+          <div class="table-wrap" style="margin-bottom: 20px;">
+            <div class="table-title">Spend by Task Type</div>
+            <div id="taskChart" style="padding: 16px;"></div>
+          </div>
+          <div class="table-wrap">
+            <div class="table-title">Top Users by Spend</div>
+            <div style="max-height: 400px; overflow-y: auto;">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Employee</th>
+                    <th>Department</th>
+                    <th>Role</th>
+                    <th class="text-right">Total Tokens</th>
+                    <th class="text-right">Total Spend</th>
+                  </tr>
+                </thead>
+                <tbody id="employeeTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <div id="analyticsEmpty" class="empty-card" style="display:none; min-height: 400px;">
+          <div class="empty-state">
+            <div class="icon">📊</div>
+            <div class="title">No usage data loaded</div>
+            <div class="sub">Go to <strong>F5 Data Manager</strong> to import a CSV or load demo data.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════ ARBITRAGE PANEL ═══════ -->
+      <div class="panel" id="panel-arbitrage">
+        <div class="section-title" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+          <span>AI Arbitrage Engine</span>
+          <button class="btn btn-secondary no-print" onclick="exportPDF('arbitrage')" style="font-size:11px; padding:7px 14px;">⤓ Export PDF</button>
+        </div>
+        <div class="estimate-disclaimer" style="margin-bottom:16px; margin-top:-6px;">
+          Savings and quality comparisons are estimates based on published pricing and curated quality scores (methodology and reference date shown in Settings). Dollar figures assume a 60/40 input/output token split. Treat these as directional guidance, not guaranteed outcomes.
+        </div>
+        <div class="grid-1-2">
+          <div class="card">
+            <div class="card-header">Configure Analysis</div>
+            <div class="form-group">
+              <div class="form-label">Current Model</div>
+              <select id="arbModel"></select>
+            </div>
+            <div class="form-group">
+              <div class="form-label">Task Type</div>
+              <select id="arbTask">
+                <option value="code generation">Code Generation</option>
+                <option value="analysis">Analysis</option>
+                <option value="writing">Writing</option>
+                <option value="summarization">Summarization</option>
+                <option value="research">Research</option>
+                <option value="customer support">Customer Support</option>
+                <option value="contract review">Contract Review</option>
+                <option value="data extraction">Data Extraction</option>
+                <option value="classification">Classification</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <div class="form-label">Monthly Token Volume</div>
+              <select id="arbTokens">
+                <option value="10000">10K</option>
+                <option value="25000">25K</option>
+                <option value="50000">50K</option>
+                <option value="100000">100K</option>
+                <option value="250000">250K</option>
+                <option value="500000" selected>500K</option>
+                <option value="1000000">1M</option>
+                <option value="2000000">2M</option>
+                <option value="5000000">5M</option>
+                <option value="10000000">10M</option>
+              </select>
+            </div>
+            <button class="btn btn-primary" onclick="runArbitrage()" style="width:100%;">Find Savings</button>
+          </div>
+          <div style="height: 100%;">
+            <div id="arbResults"></div>
+            <div id="arbEmpty" class="empty-card" style="height: 100%;">
+              <div class="empty-state">
+                <div class="icon">⚡</div>
+                <div class="sub">Select a model and task to find arbitrage opportunities.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════ RECOMMEND PANEL ═══════ -->
+      <div class="panel" id="panel-recommend">
+        <div class="section-title" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+          <span>AI Role Recommender</span>
+          <button class="btn btn-secondary no-print" onclick="exportPDF('recommend')" style="font-size:11px; padding:7px 14px;">⤓ Export PDF</button>
+        </div>
+        <div class="estimate-disclaimer" style="margin-bottom:16px; margin-top:-6px;">
+          Token budgets and cost estimates are directional, based on role profiles and a 60/40 input/output split. Actual usage will vary by individual workflow, prompt length, and model behavior.
+        </div>
+        <div class="grid-1-2">
+          <div class="card">
+            <div class="card-header">Select a Role</div>
+            <div class="form-group">
+              <div class="form-label">Industry</div>
+              <select id="recIndustry" onchange="filterRoles()">
+                <option value="">All Industries</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <div class="form-label">Role</div>
+              <select id="recRole"></select>
+            </div>
+            <button class="btn btn-primary" onclick="getRecommendation()" style="width:100%;">Get Recommendation</button>
+          </div>
+          <div id="recResult" style="height: 100%;">
+            <div class="empty-card" style="height: 100%;">
+              <div class="empty-state">
+                <div class="icon">🎯</div>
+                <div class="sub">Select a role to get model and token budget recommendations.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════ DATA MANAGER PANEL ═══════ -->
+      <div class="panel" id="panel-data">
+        <div class="section-title">Data Manager</div>
+        <div class="grid-3">
+          <div class="card">
+            <div class="card-header">Load Demo Data</div>
+            <p style="font-size:12px; font-weight:600; color:var(--text-secondary); margin-bottom:12px;">
+              Generate sample usage data across 6 departments and 25+ employees for demonstration.
+            </p>
+            <button class="btn btn-primary" onclick="seedDemo()">Load Demo Data</button>
+            <div class="status-msg" id="seedStatus"></div>
+          </div>
+          <div class="card">
+            <div class="card-header">Import CSV / Excel</div>
+            <p style="font-size:12px; font-weight:600; color:var(--text-secondary); margin-bottom:12px;">
+              Accepts .csv and .xlsx. Columns: employee, department, role, model, provider, tokens_input, tokens_output, task_type, timestamp
+            </p>
+            <input type="file" id="csvFile" accept=".csv,.xlsx,.xlsm" style="margin-bottom:8px;">
+            <button class="btn btn-primary" onclick="importCSV()">Import</button>
+            <div class="status-msg" id="importStatus"></div>
+          </div>
+          <div class="card">
+            <div class="card-header">Clear Data</div>
+            <p style="font-size:12px; font-weight:600; color:var(--text-secondary); margin-bottom:12px;">
+              Remove all imported usage data. Pricing history is preserved.
+            </p>
+            <button class="btn btn-danger" onclick="clearData()">Clear All Usage Data</button>
+            <div class="status-msg" id="clearStatus"></div>
+          </div>
+        </div>
+        <div class="card" style="margin-top: 16px;">
+          <div class="card-header">CSV Template</div>
+          <pre style="font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:600; color:var(--text-secondary); overflow-x:auto; padding:8px 0;">employee,department,role,model,provider,tokens_input,tokens_output,task_type,timestamp
+Alice Chen,Engineering,Senior Software Engineer,Claude Sonnet 4,Anthropic,15000,8000,code generation,2026-06-15T10:30:00
+Bob Martinez,Legal,Paralegal,GPT-4o,OpenAI,8000,3000,contract review,2026-06-15T11:00:00</pre>
+        </div>
+      </div>
+
+      <!-- ═══════ INSIGHTS PANEL ═══════ -->
+      <div class="panel" id="panel-insights">
+        <div class="section-title" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+          <span style="display:flex; align-items:center; gap:9px;"><span style="width:8px;height:8px;background:var(--accent-green);box-shadow:0 0 8px var(--accent-green);border-radius:1px;display:inline-block;"></span>Cross-Module Insights</span>
+          <span class="no-print" style="display:flex; gap:8px;">
+            <button class="btn btn-secondary" onclick="loadInsights()" style="font-size:11px; padding:7px 14px;">↻ Rescan</button>
+            <button class="btn btn-secondary" onclick="exportPDF('insights')" style="font-size:11px; padding:7px 14px;">⤓ Export PDF</button>
+          </span>
+        </div>
+        <div class="estimate-disclaimer" style="margin-bottom:16px; margin-top:-6px;">
+          All savings figures, quality scores, and tier assignments are estimates based on stated assumptions. Treat these as a guide for where to look, not contractual projections.
+        </div>
+
+        <div id="insightsEmpty" class="empty-card" style="display:none; min-height: 400px;">
+          <div class="empty-state">
+            <div class="icon">🔗</div>
+            <div class="title">No usage data loaded</div>
+            <div class="sub">Go to <strong>F5 Data Manager</strong> to import a CSV or load demo data — Insights needs real usage to cross-reference.</div>
+          </div>
+        </div>
+
+        <div id="insightsBody" style="display:none;">
+          <div style="font-size:13px; font-weight:700; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.8px; margin-bottom:10px;">
+            Org-Wide Arbitrage Scan <span style="font-weight:600; color:var(--text-dim); text-transform:none; letter-spacing:0; font-size:11px;">— runs Arbitrage against every employee × model × task combo in your actual usage data</span>
+          </div>
+          <div class="grid-4" id="arbScanKpis"></div>
+          <div class="table-wrap" style="margin-bottom:24px;">
+            <div style="max-height: 360px; overflow-y: auto;">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Employee</th>
+                    <th>Task</th>
+                    <th>Switch</th>
+                    <th class="text-right">Monthly Savings</th>
+                    <th class="text-right">Annual Impact</th>
+                    <th class="text-right">Confidence</th>
+                  </tr>
+                </thead>
+                <tbody id="arbScanTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div style="font-size:13px; font-weight:700; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.8px; margin-bottom:10px;">
+            Role Fit Analysis <span style="font-weight:600; color:var(--text-dim); text-transform:none; letter-spacing:0; font-size:11px;">— cross-checks each employee's actual model against what the Role Recommender says their role needs</span>
+          </div>
+          <div class="grid-4" id="roleFitKpis"></div>
+          <div id="roleFitFilterPill"></div>
+          <div class="table-wrap">
+            <div style="max-height: 360px; overflow-y: auto;">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Employee</th>
+                    <th>Role</th>
+                    <th>Primary Model</th>
+                    <th>Status</th>
+                    <th class="text-right">Potential Savings</th>
+                  </tr>
+                </thead>
+                <tbody id="roleFitTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════ ONBOARDING PANEL — Workforce ROI Calculator ═══════ -->
+      <div class="panel" id="panel-onboard">
+
+        <div class="section-title" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+          <span>Workforce ROI Calculator</span>
+          <button class="btn btn-secondary no-print" onclick="exportPDF('onboard')" style="font-size:11px; padding:7px 14px;">⤓ Export PDF</button>
+        </div>
+
+        <div class="estimate-disclaimer" style="margin-bottom:16px; margin-top:-6px;">
+          All cost figures, ROI projections, and productivity estimates are directional models built on stated inputs — not guarantees. Token pricing reflects current API list rates; actual spend depends on prompt design, caching, and negotiated terms.
+        </div>
+
+        <!-- Route Tabs -->
+        <div class="roi-tabs">
+          <button class="roi-tab active" onclick="setROIRoute('human')">
+            <div class="roi-tab-top">
+              <span class="roi-tab-badge">RTA</span>
+              Human + AI Hire
+            </div>
+            <div class="roi-tab-desc">Total cost of a role with an AI token budget — salary, overhead, and model spend in one number.</div>
+          </button>
+          <button class="roi-tab" onclick="setROIRoute('agent')">
+            <div class="roi-tab-top">
+              <span class="roi-tab-badge">RTB</span>
+              Multi-Agent Fleet
+            </div>
+            <div class="roi-tab-desc">Orchestrator + worker agents replacing a human team — compare cost and project annual savings.</div>
+          </button>
+        </div>
+
+        <!-- ── ROUTE A: HUMAN + AI HIRE ── -->
+        <div id="roi-route-human" class="roi-route-panel">
+          <div class="roi-grid">
+
+            <!-- Inputs -->
+            <div class="card">
+              <div class="card-header">Hire Parameters</div>
+              <div class="form-group">
+                <div class="form-label">Role Title</div>
+                <select id="roiRole" onchange="onROIRoleChange()"></select>
+              </div>
+              <div class="roi-form-row-2">
+                <div class="form-group">
+                  <div class="form-label">Annual Base Salary</div>
+                  <div class="roi-input-wrap">
+                    <input type="number" id="h-salary" value="150000" min="30000" max="800000" step="5000" oninput="calcHumanROI()">
+                    <span class="roi-input-suffix">$</span>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <div class="form-label">Benefits &amp; OH</div>
+                  <div class="roi-input-wrap">
+                    <input type="number" id="h-overhead" value="28" min="0" max="80" step="1" oninput="calcHumanROI()">
+                    <span class="roi-input-suffix">%</span>
+                  </div>
+                </div>
+              </div>
+              <div class="form-group">
+                <div class="form-label">AI Model</div>
+                <select id="h-model" onchange="calcHumanROI()"></select>
+              </div>
+              <div class="roi-form-row-2">
+                <div class="form-group">
+                  <div class="form-label">Token Allowance / Mo</div>
+                  <input type="number" id="h-tokens" value="250000" min="10000" max="50000000" step="50000" oninput="calcHumanROI()">
+                </div>
+                <div class="form-group">
+                  <div class="form-label">Est. Annual Value Delivered</div>
+                  <div class="roi-input-wrap">
+                    <input type="number" id="h-value" value="500000" min="0" max="10000000" step="10000" oninput="calcHumanROI()">
+                    <span class="roi-input-suffix">$</span>
+                  </div>
+                </div>
+              </div>
+              <div class="form-group">
+                <div class="form-label">Token Split — Input <span id="h-inratio-disp" style="color:var(--accent-green)">30%</span> / Output <span id="h-outratio-disp" style="color:var(--accent-amber)">70%</span></div>
+                <input type="range" id="h-inratio" min="10" max="90" value="30" step="5" oninput="calcHumanROI(); roiUpdateRatioH()">
+              </div>
+            </div>
+
+            <!-- Live Output -->
+            <div class="card">
+              <div class="card-header">Cost Analysis — Live</div>
+              <div class="roi-cost-lines">
+                <div class="roi-cost-line">
+                  <div class="roi-cost-meta">
+                    <span class="roi-cost-label">Base Salary</span>
+                    <span class="roi-cost-note" id="h-out-role-note">Senior Software Engineer</span>
+                  </div>
+                  <span class="roi-cost-val" id="h-out-salary">$150,000</span>
+                </div>
+                <div class="roi-cost-line">
+                  <div class="roi-cost-meta">
+                    <span class="roi-cost-label">Benefits &amp; Overhead</span>
+                    <span class="roi-cost-note" id="h-out-oh-note">28% of salary</span>
+                  </div>
+                  <span class="roi-cost-val" id="h-out-oh">$42,000</span>
+                </div>
+                <div class="roi-cost-line">
+                  <div class="roi-cost-meta">
+                    <span class="roi-cost-label">Annual AI Token Cost</span>
+                    <span class="roi-cost-note" id="h-out-tok-note">250K tok/mo · Claude Sonnet 4.6</span>
+                  </div>
+                  <span class="roi-cost-val" id="h-out-tok">$496</span>
+                </div>
+              </div>
+              <div class="roi-total-box">
+                <span class="roi-total-lbl">Total Fully Loaded · Annual</span>
+                <span class="roi-total-val" id="h-out-total">$192,496</span>
+              </div>
+              <div class="roi-kpi-trio">
+                <div class="roi-kpi-t">
+                  <div class="roi-kpi-val a" id="h-out-monthly">$16,041</div>
+                  <div class="roi-kpi-lbl">Monthly Burn</div>
+                </div>
+                <div class="roi-kpi-t">
+                  <div class="roi-kpi-val g" id="h-out-roi">159.8%</div>
+                  <div class="roi-kpi-lbl">1-Year ROI</div>
+                </div>
+                <div class="roi-kpi-t">
+                  <div class="roi-kpi-val b" id="h-out-payback">4.6 mo</div>
+                  <div class="roi-kpi-lbl">Payback</div>
+                </div>
+              </div>
+              <div class="roi-tok-note" id="h-out-tokdetail">
+                250,000 tok/mo · 75K in @ $3.00/M + 175K out @ $15.00/M = $41/mo → $496/yr
+              </div>
+            </div>
+          </div>
+
+          <!-- 12-Month Chart -->
+          <div class="card roi-chart-card">
+            <div class="card-header">12-Month ROI Projection — Cumulative Value vs. Cost</div>
+            <div class="roi-chart-legend">
+              <div class="roi-leg-item"><div class="roi-leg-line" style="background:var(--accent-amber)"></div>Cumulative Loaded Cost</div>
+              <div class="roi-leg-item"><div class="roi-leg-line" style="background:var(--accent-green)"></div>Cumulative Value Delivered</div>
+              <div class="roi-leg-item"><div class="roi-leg-dot" style="background:var(--accent-blue)"></div>Breakeven Month</div>
+            </div>
+            <div class="roi-chart-wrap"><div id="roi-chart-human"></div></div>
+            <div class="roi-chart-foot">Ramp curve: 40 → 55 → 70 → 85 → 92 → 100% productivity over months 1–6+</div>
+          </div>
+        </div>
+
+        <!-- ── ROUTE B: MULTI-AGENT FLEET ── -->
+        <div id="roi-route-agent" class="roi-route-panel" style="display:none">
+          <div class="roi-grid">
+
+            <!-- Inputs -->
+            <div class="card">
+              <div class="card-header">Fleet Configuration</div>
+
+              <div class="roi-agent-sec">Orchestrator Agent</div>
+              <div class="roi-form-row-2">
+                <div class="form-group">
+                  <div class="form-label">Count</div>
+                  <input type="number" id="a-orch-count" value="1" min="1" max="10" step="1" oninput="calcAgentROI()">
+                </div>
+                <div class="form-group">
+                  <div class="form-label">Tokens / Month</div>
+                  <input type="number" id="a-orch-tokens" value="500000" min="10000" max="50000000" step="100000" oninput="calcAgentROI()">
+                </div>
+              </div>
+              <div class="form-group">
+                <div class="form-label">Model</div>
+                <select id="a-orch-model" onchange="calcAgentROI()"></select>
+              </div>
+
+              <div class="roi-agent-sec">Worker Agents</div>
+              <div class="roi-form-row-2">
+                <div class="form-group">
+                  <div class="form-label">Count</div>
+                  <input type="number" id="a-worker-count" value="5" min="1" max="100" step="1" oninput="calcAgentROI()">
+                </div>
+                <div class="form-group">
+                  <div class="form-label">Tokens / Agent / Month</div>
+                  <input type="number" id="a-worker-tokens" value="250000" min="10000" max="20000000" step="50000" oninput="calcAgentROI()">
+                </div>
+              </div>
+              <div class="form-group">
+                <div class="form-label">Model</div>
+                <select id="a-worker-model" onchange="calcAgentROI()"></select>
+              </div>
+
+              <div class="roi-agent-sec">Human Team This Replaces</div>
+              <div class="roi-form-row-2">
+                <div class="form-group">
+                  <div class="form-label">FTE Headcount</div>
+                  <input type="number" id="a-human-count" value="3" min="1" max="500" step="1" oninput="calcAgentROI()">
+                </div>
+                <div class="form-group">
+                  <div class="form-label">Avg Fully-Loaded Cost</div>
+                  <div class="roi-input-wrap">
+                    <input type="number" id="a-human-cost" value="180000" min="30000" max="1000000" step="10000" oninput="calcAgentROI()">
+                    <span class="roi-input-suffix">$</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <div class="form-label">Token Split — Input <span id="a-inratio-disp" style="color:var(--accent-green)">30%</span> / Output <span id="a-outratio-disp" style="color:var(--accent-amber)">70%</span></div>
+                <input type="range" id="a-inratio" min="10" max="90" value="30" step="5" oninput="calcAgentROI(); roiUpdateRatioA()">
+              </div>
+            </div>
+
+            <!-- Live Output -->
+            <div class="card">
+              <div class="card-header">Fleet Cost Analysis — Live</div>
+              <div class="roi-cost-lines">
+                <div class="roi-cost-line">
+                  <div class="roi-cost-meta">
+                    <span class="roi-cost-label">Orchestrator(s)</span>
+                    <span class="roi-cost-note" id="a-out-orch-note">1 agent · Claude Opus 4.7</span>
+                  </div>
+                  <span class="roi-cost-val" id="a-out-orch-monthly">$28.50/mo</span>
+                </div>
+                <div class="roi-cost-line">
+                  <div class="roi-cost-meta">
+                    <span class="roi-cost-label">Worker Agents</span>
+                    <span class="roi-cost-note" id="a-out-worker-note">5 agents · Claude Sonnet 4.6</span>
+                  </div>
+                  <span class="roi-cost-val" id="a-out-worker-monthly">$14.25/mo</span>
+                </div>
+                <div class="roi-cost-line">
+                  <div class="roi-cost-meta">
+                    <span class="roi-cost-label">Total Monthly Agent Spend</span>
+                    <span class="roi-cost-note" id="a-out-total-tok-note">6 agents · 1.75M tok/mo</span>
+                  </div>
+                  <span class="roi-cost-val" id="a-out-monthly">$42.75/mo</span>
+                </div>
+              </div>
+              <div class="roi-total-box">
+                <span class="roi-total-lbl">Annual Agent Fleet Cost</span>
+                <span class="roi-total-val" id="a-out-annual">$513</span>
+              </div>
+
+              <div class="roi-comp-sec">
+                <div class="roi-comp-hdr">vs. Human Team Equivalent</div>
+                <div class="roi-comp-bar-wrap">
+                  <div class="roi-comp-bar-lbl">
+                    <span style="color:var(--text-secondary);font-size:11px;font-weight:600;">Agent Fleet (Annual)</span>
+                    <span class="roi-cost-val" id="a-bar-agent-val">$513</span>
+                  </div>
+                  <div class="roi-bar-track"><div class="roi-bar-fill fill-blue" id="a-bar-agent" style="width:0.1%"></div></div>
+                </div>
+                <div class="roi-comp-bar-wrap" style="margin-top:8px;">
+                  <div class="roi-comp-bar-lbl">
+                    <span style="color:var(--text-secondary);font-size:11px;font-weight:600;">Human Team (Annual)</span>
+                    <span class="roi-cost-val" id="a-bar-human-val">$540,000</span>
+                  </div>
+                  <div class="roi-bar-track"><div class="roi-bar-fill fill-amber" id="a-bar-human" style="width:100%"></div></div>
+                </div>
+              </div>
+
+              <div id="a-savings-box" class="roi-savings-box">
+                <span class="roi-savings-lbl">Annual Savings vs. Human Team</span>
+                <span class="roi-savings-val" id="a-out-savings">$539,487</span>
+              </div>
+
+              <div class="roi-kpi-trio" style="margin-top:10px;">
+                <div class="roi-kpi-t">
+                  <div class="roi-kpi-val g" id="a-out-roi">105,160%</div>
+                  <div class="roi-kpi-lbl">Agents vs. Humans ROI</div>
+                </div>
+                <div class="roi-kpi-t">
+                  <div class="roi-kpi-val b" id="a-out-agents-total">6</div>
+                  <div class="roi-kpi-lbl">Total Agents</div>
+                </div>
+                <div class="roi-kpi-t">
+                  <div class="roi-kpi-val a" id="a-out-cost-per-agent">$7/mo</div>
+                  <div class="roi-kpi-lbl">Cost per Agent</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 12-Month Chart -->
+          <div class="card roi-chart-card">
+            <div class="card-header">12-Month Cumulative Cost Comparison</div>
+            <div class="roi-chart-legend">
+              <div class="roi-leg-item"><div class="roi-leg-line" style="background:var(--accent-amber)"></div>Human Team Cumulative</div>
+              <div class="roi-leg-item"><div class="roi-leg-line" style="background:var(--accent-blue)"></div>Agent Fleet Cumulative</div>
+              <div class="roi-leg-item"><div class="roi-leg-line" style="background:var(--accent-green);height:3px"></div>Cumulative Savings</div>
+            </div>
+            <div class="roi-chart-wrap"><div id="roi-chart-agent"></div></div>
+            <div class="roi-chart-foot" id="a-chart-note">12-month savings · Agents start delivering from Day 1</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ═══════ SETTINGS PANEL (PRD D1-D6) ═══════ -->
+      <div class="panel" id="panel-settings">
+        <div class="section-title">Settings</div>
+
+        <!-- Anthropic API Key -->
+        <div class="settings-section">
+          <div class="settings-section-title">AI API Key (Anthropic or OpenAI)</div>
+          <div style="font-size:12px; font-weight:600; color:var(--text-dim); margin-bottom:12px; line-height:1.6;">
+            The "Validate with Claude" feature on the Onboarding tab sends your onboarding plan to Anthropic's API for an AI review. This uses <strong style="color:var(--text-secondary);">your own Anthropic account</strong> and bills to you. All other features work without a key.
+          </div>
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <input type="password" class="settings-key-input" id="settingsApiKey" placeholder="sk-ant-… or sk-…" autocomplete="off" spellcheck="false">
+            <button class="btn btn-primary" onclick="saveApiKey()" style="font-size:11px; padding:7px 14px;">Save Key</button>
+            <button class="btn btn-secondary" onclick="testApiKey()" style="font-size:11px; padding:7px 14px;">Test Key</button>
+            <button class="btn btn-secondary" onclick="clearApiKey()" style="font-size:11px; padding:7px 14px; color:var(--text-dim);">Clear</button>
+          </div>
+          <div class="status-msg" id="settingsKeyStatus"></div>
+        </div>
+
+        <!-- Data Location -->
+        <div class="settings-section">
+          <div class="settings-section-title">Data Location</div>
+          <div class="settings-row">
+            <span class="settings-label">Database</span>
+            <span class="settings-value" id="settingsDbPath" style="word-break:break-all; font-size:11px;"></span>
+          </div>
+          <div class="settings-row">
+            <span class="settings-label">Data Directory</span>
+            <span class="settings-value" id="settingsDataDir" style="word-break:break-all; font-size:11px;"></span>
+          </div>
+        </div>
+
+        <!-- Pricing Data -->
+        <div class="settings-section">
+          <div class="settings-section-title">Pricing Data</div>
+          <div class="settings-row">
+            <span class="settings-label">Models Tracked</span>
+            <span class="settings-value num" id="settingsModelCount">—</span>
+          </div>
+          <div class="settings-row">
+            <span class="settings-label">Providers</span>
+            <span class="settings-value num" id="settingsProviderCount">—</span>
+          </div>
+          <p style="font-size:12px; font-weight:600; color:var(--text-secondary); margin: 12px 0 12px; line-height:1.5;">
+            Clear the pricing catalog to start fresh — useful when you want to hand-pick which providers to track. After clearing, use <strong style="color:var(--text-primary)">Refresh Pricing</strong> in the sidebar to pull the live catalog, then approve only the providers you want from the Proposals panel.
+          </p>
+          <button class="btn btn-danger" onclick="clearPricingData()" id="clearPricingBtn">Clear All Pricing Data</button>
+          <div class="status-msg" id="clearPricingStatus"></div>
+        </div>
+
+        <!-- About -->
+        <div class="settings-section">
+          <div class="settings-section-title">About</div>
+          <div class="settings-row">
+            <span class="settings-label">Product</span>
+            <span class="settings-value">Jarod — Tokenomics Arbitrage</span>
+          </div>
+          <div class="settings-row">
+            <span class="settings-label">Version</span>
+            <span class="settings-value" id="settingsVersion"></span>
+          </div>
+          <div style="margin-top:10px; font-size:11px; font-weight:600; color:var(--text-dim); line-height:1.6;">
+            Quality scores reflect a fixed reference methodology (hand-curated for major models, price-tier-derived for dynamically discovered models). Dollar figures assume a 60/40 input/output token split. All savings and quality figures are directional estimates, not guarantees.
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+// ── STATE ──
+let pricingData = [];
+let rolesData = {};
+let pricingHistory = [];
+let selectedModel = null;
+let selectedKpi = null;
+let selectedProvider = '';
+let selectedRoleFitFilter = null;
+let proposalsCache = [];
+let proposalsProviderFilter = '';
+let roleFitData = null;
+let hasAnthropicKey = false;
+
+// ── INIT ──
+async function init() {
+  updateClock();
+  setInterval(updateClock, 1000);
+
+  // Check if Anthropic key is set (for AI feature gating)
+  try {
+    const keyRes = await fetch('/api/config/has-key');
+    const keyData = await keyRes.json();
+    hasAnthropicKey = keyData.has_key;
+  } catch (e) { hasAnthropicKey = false; }
+
+  const [pRes, rRes, hRes] = await Promise.all([
+    fetch('/api/pricing').then(r => r.json()),
+    fetch('/api/roles').then(r => r.json()),
+    fetch('/api/pricing/history').then(r => r.json()),
+  ]);
+  pricingData = pRes;
+  rolesData = rRes;
+  pricingHistory = hRes;
+
+  buildTicker();
+  buildMarket();
+  buildArbModelSelect();
+  buildRoleSelects();
+  buildOnboardSelects();
+  buildROIRoleSelects();
+  loadAnalytics();
+  loadProposals();
+}
+
+function updateClock() {
+  const now = new Date();
+  document.getElementById('headerTime').textContent = now.toLocaleString('en-US', {
+    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit'
+  });
+}
+
+// ── COUNT-UP HELPER ──
+function animateValue(el, end, opts = {}) {
+  if (!el) return;
+  const duration = opts.duration || 900;
+  const decimals = opts.decimals != null ? opts.decimals : 0;
+  const prefix = opts.prefix || '';
+  const suffix = opts.suffix || '';
+  const formatFn = opts.formatFn;
+  const startTime = performance.now();
+  function frame(now) {
+    const progress = Math.min((now - startTime) / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    const value = end * eased;
+    el.textContent = formatFn ? formatFn(value) : prefix + value.toFixed(decimals) + suffix;
+    if (progress < 1) requestAnimationFrame(frame);
+    else el.textContent = formatFn ? formatFn(end) : prefix + end.toFixed(decimals) + suffix;
+  }
+  requestAnimationFrame(frame);
+}
+
+function gaugeColor(ratio) {
+  if (ratio < 0.33) return 'var(--accent-green)';
+  if (ratio < 0.66) return 'var(--accent-amber)';
+  return 'var(--accent-red)';
+}
+
+// ── SIDEBAR RESIZE ──
+function initSidebarResize() {
+  const handle = document.getElementById('sidebarResizeHandle');
+  const root = document.documentElement;
+  const MIN_W = 200;
+  const MAX_W = 420;
+  const DEFAULT_W = 252;
+
+  const saved = parseInt(localStorage.getItem('ctsg_sidebar_width'), 10);
+  if (saved && saved >= MIN_W && saved <= MAX_W) {
+    root.style.setProperty('--sidebar-w', saved + 'px');
+  }
+
+  let dragging = false;
+
+  function setWidth(x) {
+    const w = Math.max(MIN_W, Math.min(MAX_W, x));
+    root.style.setProperty('--sidebar-w', w + 'px');
+    return w;
+  }
+
+  function startDrag(e) {
+    if (window.innerWidth <= 900) return; // sidebar is horizontal on mobile
+    dragging = true;
+    handle.classList.add('dragging');
+    document.body.classList.add('resizing-sidebar');
+    e.preventDefault();
+  }
+  function moveDrag(x) {
+    if (!dragging) return;
+    setWidth(x);
+  }
+  function endDrag() {
+    if (!dragging) return;
+    dragging = false;
+    handle.classList.remove('dragging');
+    document.body.classList.remove('resizing-sidebar');
+    const w = parseInt(getComputedStyle(root).getPropertyValue('--sidebar-w'), 10);
+    localStorage.setItem('ctsg_sidebar_width', w);
+  }
+
+  handle.addEventListener('mousedown', startDrag);
+  window.addEventListener('mousemove', (e) => moveDrag(e.clientX));
+  window.addEventListener('mouseup', endDrag);
+
+  handle.addEventListener('touchstart', startDrag, {passive: false});
+  window.addEventListener('touchmove', (e) => { if (dragging) moveDrag(e.touches[0].clientX); }, {passive: true});
+  window.addEventListener('touchend', endDrag);
+
+  handle.addEventListener('dblclick', () => {
+    setWidth(DEFAULT_W);
+    localStorage.setItem('ctsg_sidebar_width', DEFAULT_W);
+  });
+}
+
+// ── TABS ──
+function switchTab(name) {
+  document.querySelectorAll('.nav-item').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  document.getElementById('panel-' + name).classList.add('active');
+  if (name === 'analytics') loadAnalytics();
+  if (name === 'insights') loadInsights();
+  if (name === 'settings') loadSettings();
+}
+
+// ── PDF EXPORT ──
+// POSTs the current tab's form state to a server endpoint that returns a
+// generated PDF with Content-Disposition: attachment. The browser drops it
+// straight into the user's Downloads folder — no print dialog, no filename
+// prompt, no interaction. Same one-click flow as any file download.
+async function exportPDF(tabName) {
+  const btn = event && event.currentTarget;
+  const originalLabel = btn ? btn.textContent : null;
+  if (btn) { btn.textContent = 'Building PDF…'; btn.disabled = true; }
+  try {
+    // Collect form state per tab. Insights takes no params; the others
+    // read the same controls the on-screen tab uses.
+    let body = {};
+    if (tabName === 'arbitrage') {
+      body = {
+        model:          document.getElementById('arbModel').value,
+        task_type:      document.getElementById('arbTask').value,
+        monthly_tokens: parseInt(document.getElementById('arbTokens').value, 10) || 500000,
+      };
+    } else if (tabName === 'recommend') {
+      const roleEl = document.getElementById('recRole');
+      body = { role: roleEl ? roleEl.value : '' };
+      if (!body.role) throw new Error('Pick a role first');
+    } else if (tabName === 'onboard') {
+      const roleEl = document.getElementById('obRole');
+      body = { role: roleEl ? roleEl.value : '' };
+      if (!body.role) throw new Error('Pick a role first');
+    } else if (tabName === 'insights') {
+      body = {};
+    }
+
+    const res = await fetch(`/api/export/${tabName}`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({error: `HTTP ${res.status}`}));
+      throw new Error(err.error || `Export failed (HTTP ${res.status})`);
+    }
+
+    // Extract filename from Content-Disposition; browsers use it verbatim.
+    let filename = `Jarod_${tabName}.pdf`;
+    const cd = res.headers.get('Content-Disposition') || '';
+    const m = cd.match(/filename="?([^"]+)"?/);
+    if (m) filename = m[1];
+
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    // Revoke on next tick so the download has time to start.
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  } catch (e) {
+    alert('PDF export failed: ' + e.message);
+  } finally {
+    if (btn) { btn.textContent = originalLabel; btn.disabled = false; }
+  }
+}
+
+// ── TICKER ──
+function buildTicker() {
+  const track = document.getElementById('tickerTrack');
+  const items = pricingData.map(m => {
+    const ctx = m.context >= 1000000 ? (m.context/1000000)+'M' : (m.context/1000)+'K';
+    return `<div class="ticker-item">
+      <span class="ticker-model">${m.model}</span>
+      <span class="ticker-provider">${m.provider}</span>
+      <span class="ticker-price">$${m.input.toFixed(2)} / $${m.output.toFixed(2)}</span>
+      <span class="ticker-ctx">${ctx} ctx</span>
+    </div>`;
+  }).join('');
+  track.innerHTML = items + items; // duplicate for seamless loop
+}
+
+// ── MARKET ──
+function buildMarket() {
+  const avgInput = pricingData.reduce((s,m) => s+m.input, 0) / pricingData.length;
+  const avgOutput = pricingData.reduce((s,m) => s+m.output, 0) / pricingData.length;
+  const sorted = [...pricingData].sort((a,b) => a.input - b.input);
+  const cheapest = sorted[0];
+  const mostExpensive = [...pricingData].sort((a,b) => b.input - a.input)[0];
+  const providerNames = [...new Set(pricingData.map(m => m.provider))].sort();
+  const providers = providerNames.length;
+  const tiers = {};
+  pricingData.forEach(m => { tiers[m.tier] = (tiers[m.tier] || 0) + 1; });
+  const medianInput = sorted[Math.floor(sorted.length / 2)]?.input || 0;
+  const avgEffective = pricingData.reduce((s,m) => s + m.output/1000, 0) / pricingData.length;
+
+  document.getElementById('kpiBody1').innerHTML = `
+    <div class="kpi-card ${selectedKpi === 'models' ? 'kpi-active' : ''}" onclick="toggleKpi('models')" style="border:none; padding:0;">
+      <div class="card-value blue" id="kpiModels">0</div>
+      <div class="card-sub">${providers} providers</div>
+      <div class="kpi-expand">
+        ${Object.entries(tiers).map(([t,c]) => `<div class="kpi-expand-row"><span class="kpi-expand-label">${t}</span><span class="kpi-expand-value">${c}</span></div>`).join('')}
+      </div>
+    </div>`;
+  document.getElementById('kpiBody2').innerHTML = `
+    <div class="kpi-card ${selectedKpi === 'input' ? 'kpi-active' : ''}" onclick="toggleKpi('input')" style="border:none; padding:0;">
+      <div class="card-value" id="kpiAvgInput">$0.00</div>
+      <div class="card-sub">per 1M tokens</div>
+      <div class="kpi-expand">
+        <div class="kpi-expand-row"><span class="kpi-expand-label">Median</span><span class="kpi-expand-value green">$${medianInput.toFixed(2)}</span></div>
+        <div class="kpi-expand-row"><span class="kpi-expand-label">Cheapest</span><span class="kpi-expand-value green">$${cheapest.input.toFixed(2)}</span></div>
+        <div class="kpi-expand-row"><span class="kpi-expand-label">Priciest</span><span class="kpi-expand-value red">$${mostExpensive.input.toFixed(2)}</span></div>
+      </div>
+    </div>`;
+  document.getElementById('kpiBody3').innerHTML = `
+    <div class="kpi-card ${selectedKpi === 'output' ? 'kpi-active' : ''}" onclick="toggleKpi('output')" style="border:none; padding:0;">
+      <div class="card-value" id="kpiAvgOutput">$0.00</div>
+      <div class="card-sub">per 1M tokens</div>
+      <div class="kpi-expand">
+        <div class="kpi-expand-row"><span class="kpi-expand-label">Avg $/1K out</span><span class="kpi-expand-value green">$${avgEffective.toFixed(4)}</span></div>
+        <div class="kpi-expand-row"><span class="kpi-expand-label">Out:In ratio</span><span class="kpi-expand-value amber">${(avgOutput / avgInput).toFixed(1)}×</span></div>
+      </div>
+    </div>`;
+  document.getElementById('kpiBody4').innerHTML = `
+    <div class="kpi-card ${selectedKpi === 'lowest' ? 'kpi-active' : ''}" onclick="toggleKpi('lowest')" style="border:none; padding:0;">
+      <div class="card-value green" id="kpiLowest">$0.00</div>
+      <div class="card-sub">${cheapest.model}</div>
+      <div class="kpi-expand">
+        <div class="kpi-expand-row"><span class="kpi-expand-label">Provider</span><span class="kpi-expand-value">${cheapest.provider}</span></div>
+        <div class="kpi-expand-row"><span class="kpi-expand-label">Output</span><span class="kpi-expand-value amber">$${cheapest.output.toFixed(2)}</span></div>
+        <div class="kpi-expand-row"><span class="kpi-expand-label">Tier</span><span class="kpi-expand-value">${cheapest.tier}</span></div>
+      </div>
+    </div>`;
+  animateValue(document.getElementById('kpiModels'), pricingData.length, {decimals: 0});
+  animateValue(document.getElementById('kpiAvgInput'), avgInput, {decimals: 2, prefix: '$'});
+  animateValue(document.getElementById('kpiAvgOutput'), avgOutput, {decimals: 2, prefix: '$'});
+  animateValue(document.getElementById('kpiLowest'), cheapest.input, {decimals: 2, prefix: '$'});
+
+  // Populate provider dropdown
+  const filterSel = document.getElementById('providerFilter');
+  filterSel.innerHTML = '<option value="">Select Provider…</option>' +
+    providerNames.map(p => `<option value="${p}">${p} (${pricingData.filter(m=>m.provider===p).length})</option>`).join('');
+  filterSel.value = selectedProvider;
+
+  if (selectedModel && !pricingData.some(m => m.model === selectedModel)) selectedModel = null;
+
+  // Pricing freshness label (PRD J1)
+  const freshnessEl = document.getElementById('pricingFreshnessLabel');
+  if (freshnessEl && pricingHistory.length) {
+    const dates = [...new Set(pricingHistory.map(h => h.snapshot_date))].sort();
+    const latestDate = dates[dates.length - 1];
+    if (dates.length <= 1) {
+      freshnessEl.innerHTML = 'Seed pricing — click <strong>Refresh Pricing</strong> for live data';
+      freshnessEl.style.color = 'var(--accent-amber)';
+    } else {
+      freshnessEl.textContent = 'Last refreshed: ' + latestDate;
+      freshnessEl.style.color = 'var(--text-dim)';
+    }
+  }
+
+  renderMarketTable();
+}
+
+function toggleKpi(kpi) {
+  selectedKpi = (selectedKpi === kpi) ? null : kpi;
+  buildMarket();
+}
+
+function onProviderFilterChange() {
+  selectedProvider = document.getElementById('providerFilter').value;
+  selectedModel = null;
+  renderMarketTable();
+}
+
+function renderMarketTable() {
+  const selected = selectedProvider;
+  const emptyDiv = document.getElementById('marketTableEmpty');
+  const innerDiv = document.getElementById('marketTableInner');
+
+  if (!selected) {
+    emptyDiv.style.display = 'flex';
+    innerDiv.style.display = 'none';
+    renderMarketDonut();
+    renderMarketTrend();
+    return;
+  }
+  emptyDiv.style.display = 'none';
+  innerDiv.style.display = 'block';
+
+  const rows = pricingData.filter(m => m.provider === selected);
+  const maxInput = Math.max(...pricingData.map(m => m.input));
+  const tbody = document.getElementById('marketTableBody');
+  const tierColors = {frontier: 'blue', standard: 'green', efficiency: 'amber', reasoning: 'purple'};
+
+  if (rows.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:var(--text-dim); padding:24px;">No models for this provider.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = rows.map(m => {
+    const ctx = m.context >= 1000000 ? (m.context/1000000)+'M' : (m.context/1000)+'K';
+    const effective = (m.output / 1000).toFixed(4);
+    const pct = (m.input / maxInput * 100).toFixed(0);
+    const isSelected = selectedModel === m.model;
+    return `<tr data-model="${m.model}" class="${isSelected ? 'row-selected' : ''}" onclick="selectModel(this.dataset.model)" style="cursor:pointer;" title="Click to focus charts on this model">
+      <td style="font-family:Inter,sans-serif; font-weight:600; color:var(--text-secondary)">${m.provider}</td>
+      <td style="font-weight:700; color:var(--text-primary)">${m.model}</td>
+      <td><span class="${tierColors[m.tier] || ''}" style="font-family:Inter; font-weight:700; font-size:11px; text-transform:uppercase">${m.tier}</span></td>
+      <td class="text-right">
+        <span class="green">$${m.input.toFixed(2)}</span>
+        <span class="cost-gauge"><span class="cost-gauge-fill" style="width:${pct}%; background:${gaugeColor(m.input/maxInput)}"></span></span>
+      </td>
+      <td class="text-right amber">$${m.output.toFixed(2)}</td>
+      <td class="text-right dim">${m.cached != null ? '$' + m.cached.toFixed(3) : '—'}</td>
+      <td class="text-right dim">${ctx}</td>
+      <td class="text-right">$${effective}</td>
+    </tr>`;
+  }).join('');
+
+  renderMarketDonut();
+  renderMarketTrend();
+}
+
+// ── SHARED CHART TOOLTIP ──
+function ensureChartTooltip() {
+  let t = document.getElementById('chartTooltip');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'chartTooltip';
+    t.style.cssText = 'display:none; position:fixed; z-index:200; pointer-events:none; background:var(--bg-sidebar); border:1px solid var(--border-bright); border-radius:5px; padding:7px 11px; font-family:Inter,sans-serif; font-size:11px; font-weight:600; color:var(--text-primary); line-height:1.5; white-space:nowrap; box-shadow:0 4px 16px rgba(0,0,0,0.5);';
+    document.body.appendChild(t);
+  }
+  return t;
+}
+function showChartTooltip(html, evt) {
+  const t = ensureChartTooltip();
+  t.innerHTML = html;
+  t.style.display = 'block';
+  moveChartTooltip(evt);
+}
+function moveChartTooltip(evt) {
+  const t = document.getElementById('chartTooltip');
+  if (!t || !evt) return;
+  t.style.left = (evt.clientX + 14) + 'px';
+  t.style.top = (evt.clientY + 14) + 'px';
+}
+function hideChartTooltip() {
+  const t = document.getElementById('chartTooltip');
+  if (t) t.style.display = 'none';
+}
+function formatDateShort(dateStr) {
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return dateStr;
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+// ── DONUT: EFFECTIVE COST BREAKDOWN ──
+const DONUT_COLORS = ['#00ffa3', '#4d9fff', '#ffb020', '#b794f6', '#ff4d6a', '#36e2c9', '#ff8a4d', '#7ee787', '#5eead4', '#f472b6'];
+
+function polarToCartesian(cx, cy, r, angleDeg) {
+  const a = (angleDeg - 90) * Math.PI / 180;
+  return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) };
+}
+function describeDonutArc(cx, cy, rOuter, rInner, startAngle, endAngle) {
+  if (endAngle - startAngle >= 359.99) endAngle = startAngle + 359.99;
+  const startOuter = polarToCartesian(cx, cy, rOuter, endAngle);
+  const endOuter = polarToCartesian(cx, cy, rOuter, startAngle);
+  const startInner = polarToCartesian(cx, cy, rInner, endAngle);
+  const endInner = polarToCartesian(cx, cy, rInner, startAngle);
+  const largeArc = (endAngle - startAngle) <= 180 ? '0' : '1';
+  return [
+    'M', startOuter.x.toFixed(2), startOuter.y.toFixed(2),
+    'A', rOuter, rOuter, 0, largeArc, 0, endOuter.x.toFixed(2), endOuter.y.toFixed(2),
+    'L', endInner.x.toFixed(2), endInner.y.toFixed(2),
+    'A', rInner, rInner, 0, largeArc, 1, startInner.x.toFixed(2), startInner.y.toFixed(2),
+    'Z'
+  ].join(' ');
+}
+
+function buildDonutDataset() {
+  if (selectedModel) {
+    const m = pricingData.find(x => x.model === selectedModel);
+    if (!m) {
+      return { mode: 'model-detail', items: [], model: null };
+    }
+    const items = [
+      { label: 'Input', value: m.input, sub: 'per 1M tokens' },
+      { label: 'Output', value: m.output, sub: 'per 1M tokens' },
+      { label: 'Cached', value: m.cached, sub: 'per 1M tokens' },
+    ].filter(it => it.value > 0);
+    return { mode: 'model-detail', items, model: m };
+  }
+  const selected = selectedProvider;
+  if (!selected) {
+    const byProvider = {};
+    pricingData.forEach(m => {
+      const eff = m.output / 1000;
+      byProvider[m.provider] = byProvider[m.provider] || { sum: 0, count: 0 };
+      byProvider[m.provider].sum += eff;
+      byProvider[m.provider].count += 1;
+    });
+    const items = Object.entries(byProvider).map(([provider, v]) => ({
+      label: provider, value: v.sum / v.count, sub: `${v.count} model${v.count > 1 ? 's' : ''} \u00b7 avg`
+    })).sort((a, b) => b.value - a.value);
+    return { mode: 'provider', items };
+  }
+  const items = pricingData.filter(m => m.provider === selected).map(m => ({
+    label: m.model, value: m.output / 1000, sub: m.tier
+  })).sort((a, b) => b.value - a.value);
+  return { mode: 'model', items };
+}
+
+function renderMarketDonut() {
+  const ds = buildDonutDataset();
+  window._donutDataset = ds;
+  const wrap = document.getElementById('marketDonutWrap');
+  const subtitle = document.getElementById('donutSubtitle');
+  const clearLink = `<span onclick="clearModelSelection()" style="cursor:pointer; color:var(--accent-red); text-decoration:underline; text-underline-offset:2px;">\u2715 clear</span>`;
+
+  if (!ds.items.length) {
+    subtitle.innerHTML = ds.mode === 'model-detail' ? clearLink : '';
+    wrap.innerHTML = `<div style="color:var(--text-dim); font-size:12px; font-weight:600;">No data.</div>`;
+    return;
+  }
+
+  if (ds.mode === 'provider') {
+    subtitle.innerHTML = 'avg $/1K out by provider \u2014 click a slice to filter';
+  } else if (ds.mode === 'model') {
+    subtitle.innerHTML = 'by model \u2014 click a slice to drill in';
+  } else {
+    subtitle.innerHTML = `${ds.model.model} cost structure &nbsp;\u00b7&nbsp; ${clearLink}`;
+  }
+
+  const isDetail = ds.mode === 'model-detail';
+  const fmt = v => isDetail ? v.toFixed(2) : v.toFixed(4);
+
+  const total = ds.items.reduce((s, it) => s + it.value, 0);
+  const cx = 90, cy = 90, rOuter = 80, rInner = 50;
+  let cumulative = 0;
+  const paths = ds.items.map((it, i) => {
+    const fraction = total > 0 ? it.value / total : 0;
+    const startAngle = cumulative * 360;
+    cumulative += fraction;
+    const endAngle = cumulative * 360;
+    const color = DONUT_COLORS[i % DONUT_COLORS.length];
+    const d = describeDonutArc(cx, cy, rOuter, rInner, startAngle, endAngle);
+    return `<path d="${d}" fill="${color}" fill-opacity="0.85" stroke="var(--bg-card)" stroke-width="2"
+      style="cursor:pointer; transition:fill-opacity 0.15s;"
+      onmouseenter="hoverDonutSlice(${i}, event)" onmousemove="moveChartTooltip(event)" onmouseleave="unhoverDonutSlice()"
+      onclick="clickDonutSlice(${i})"></path>`;
+  }).join('');
+
+  const legend = ds.items.map((it, i) => {
+    const color = DONUT_COLORS[i % DONUT_COLORS.length];
+    return `<div class="donut-legend-row" data-index="${i}" onmouseenter="hoverDonutSlice(${i}, event)" onmousemove="moveChartTooltip(event)" onmouseleave="unhoverDonutSlice()" onclick="clickDonutSlice(${i})"
+      style="display:flex; align-items:center; gap:8px; padding:4px 6px; border-radius:4px; cursor:pointer; font-size:11px; font-weight:600;">
+      <span style="width:9px;height:9px;border-radius:2px;background:${color};flex-shrink:0;"></span>
+      <span style="color:var(--text-secondary); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${it.label}</span>
+      <span class="mono" style="color:var(--text-primary); font-weight:700;">$${fmt(it.value)}</span>
+    </div>`;
+  }).join('');
+
+  let centerLabel, centerValue;
+  if (isDetail) {
+    centerLabel = ds.model.tier.toUpperCase();
+    centerValue = `$${(ds.model.output / 1000).toFixed(4)}`;
+  } else {
+    centerLabel = 'avg $/1K';
+    centerValue = `$${(total / ds.items.length).toFixed(4)}`;
+  }
+
+  wrap.innerHTML = `
+    <div style="position:relative; flex-shrink:0; width:180px; height:180px;">
+      <svg id="marketDonutSvg" width="180" height="180" viewBox="0 0 180 180">${paths}</svg>
+      <div style="position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; pointer-events:none;">
+        <div style="font-family:'JetBrains Mono',monospace; font-size:9px; font-weight:700; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.6px;">${centerLabel}</div>
+        <div style="font-family:'Space Grotesk',sans-serif; font-size:16px; font-weight:700; color:var(--text-primary);">${centerValue}</div>
+      </div>
+    </div>
+    <div style="flex:1; min-width:160px; max-height:180px; overflow-y:auto;">${legend}</div>
+  `;
+}
+
+function hoverDonutSlice(i, evt) {
+  const ds = window._donutDataset;
+  if (!ds) return;
+  const paths = document.querySelectorAll('#marketDonutSvg path');
+  paths.forEach((p, idx) => p.setAttribute('fill-opacity', idx === i ? '1' : '0.3'));
+  document.querySelectorAll('.donut-legend-row').forEach((row, idx) => {
+    row.style.background = idx === i ? 'var(--bg-card-hover)' : 'transparent';
+  });
+  const it = ds.items[i];
+  const valStr = ds.mode === 'model-detail' ? it.value.toFixed(2) : it.value.toFixed(4);
+  const unit = ds.mode === 'model-detail' ? '/1M tokens' : '/1K out';
+  showChartTooltip(`<strong>${it.label}</strong><br><span style="color:var(--text-dim); font-weight:600;">${it.sub}</span> &mdash; $${valStr}${unit}`, evt);
+}
+function unhoverDonutSlice() {
+  document.querySelectorAll('#marketDonutSvg path').forEach(p => p.setAttribute('fill-opacity', '0.85'));
+  document.querySelectorAll('.donut-legend-row').forEach(row => row.style.background = 'transparent');
+  hideChartTooltip();
+}
+function clickDonutSlice(i) {
+  const ds = window._donutDataset;
+  if (!ds) return;
+  const it = ds.items[i];
+  if (ds.mode === 'provider') {
+    selectedProvider = it.label;
+    document.getElementById('providerFilter').value = it.label;
+    renderMarketTable();
+  } else if (ds.mode === 'model') {
+    selectModel(it.label);
+    scrollToModelRow(it.label);
+  } else {
+    // model-detail: clicking any slice backs out of the single-model view
+    selectModel(null);
+  }
+}
+
+// ── SINGLE-MODEL SELECTION ──
+function selectModel(modelName) {
+  selectedModel = (selectedModel && selectedModel === modelName) ? null : modelName;
+  updateTableSelectionHighlight();
+  renderMarketDonut();
+  renderMarketTrend();
+}
+function clearModelSelection() {
+  selectModel(null);
+}
+function updateTableSelectionHighlight() {
+  document.querySelectorAll('#marketTableBody tr[data-model]').forEach(row => {
+    row.classList.toggle('row-selected', !!selectedModel && row.dataset.model === selectedModel);
+  });
+}
+function scrollToModelRow(modelName) {
+  const row = document.querySelector(`#marketTableBody tr[data-model="${CSS.escape(modelName)}"]`);
+  if (row) row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+// ── TREND: EFFECTIVE COST OVER TIME ──
+function buildTrendDataset() {
+  let modelsInScope, label;
+  if (selectedModel) {
+    modelsInScope = [selectedModel];
+    label = selectedModel;
+  } else {
+    modelsInScope = selectedProvider
+      ? pricingData.filter(m => m.provider === selectedProvider).map(m => m.model)
+      : pricingData.map(m => m.model);
+    label = selectedProvider || 'All Providers';
+  }
+
+  const byDate = {};
+  pricingHistory.forEach(h => {
+    if (!modelsInScope.includes(h.model)) return;
+    const eff = h.output_cost / 1000;
+    byDate[h.snapshot_date] = byDate[h.snapshot_date] || { sum: 0, count: 0 };
+    byDate[h.snapshot_date].sum += eff;
+    byDate[h.snapshot_date].count += 1;
+  });
+
+  const points = Object.entries(byDate)
+    .map(([date, v]) => ({ date, value: v.sum / v.count }))
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  return { points, label, isSingleModel: !!selectedModel };
+}
+
+function renderMarketTrend() {
+  const ds = buildTrendDataset();
+  window._trendDataset = ds;
+  const wrap = document.getElementById('marketTrendWrap');
+  const subtitle = document.getElementById('trendSubtitle');
+  const clearLink = `<span onclick="clearModelSelection()" style="cursor:pointer; color:var(--accent-red); text-decoration:underline; text-underline-offset:2px;">\u2715 clear</span>`;
+  const metricLabel = ds.isSingleModel ? '$/1K out' : 'avg $/1K out';
+  subtitle.innerHTML = ds.isSingleModel
+    ? `${metricLabel} \u2014 ${ds.label} &nbsp;\u00b7&nbsp; ${clearLink}`
+    : `${metricLabel} \u2014 ${ds.label}`;
+
+  if (ds.points.length === 0) {
+    wrap.innerHTML = `<div style="color:var(--text-dim); font-size:12px; font-weight:600; text-align:center;">No pricing snapshots yet.</div>`;
+    return;
+  }
+
+  if (ds.points.length === 1) {
+    const p = ds.points[0];
+    wrap.innerHTML = `
+      <div style="text-align:center;">
+        <div style="font-family:'Space Grotesk',sans-serif; font-size:26px; font-weight:700; color:var(--accent-green); text-shadow:0 0 16px rgba(0,255,163,0.3);">$${p.value.toFixed(4)}</div>
+        <div style="font-size:11px; font-weight:600; color:var(--text-dim); margin-top:8px; max-width:260px;">Tracking started ${formatDateShort(p.date)}. Trend builds as you run Refresh Live Pricing and approve updates over time.</div>
+      </div>`;
+    return;
+  }
+
+  const w = 480, h = 170, padL = 56, padR = 16, padT = 16, padB = 26;
+  const values = ds.points.map(p => p.value);
+  const minV = Math.min(...values), maxV = Math.max(...values);
+  const range = (maxV - minV) || (maxV * 0.1) || 0.001;
+  const yMin = Math.max(0, minV - range * 0.15);
+  const yMax = maxV + range * 0.15;
+
+  const xStep = (w - padL - padR) / (ds.points.length - 1);
+  const coords = ds.points.map((p, i) => ({
+    x: padL + i * xStep,
+    y: padT + (1 - (p.value - yMin) / (yMax - yMin)) * (h - padT - padB),
+    date: p.date, value: p.value
+  }));
+
+  const linePath = coords.map((c, i) => (i === 0 ? 'M' : 'L') + c.x.toFixed(1) + ' ' + c.y.toFixed(1)).join(' ');
+  const areaPath = linePath +
+    ` L ${coords[coords.length - 1].x.toFixed(1)} ${(h - padB).toFixed(1)} L ${coords[0].x.toFixed(1)} ${(h - padB).toFixed(1)} Z`;
+
+  const gridLines = [0, 0.5, 1].map(f => {
+    const y = padT + f * (h - padT - padB);
+    const val = yMax - f * (yMax - yMin);
+    return `<line x1="${padL}" y1="${y.toFixed(1)}" x2="${w - padR}" y2="${y.toFixed(1)}" stroke="var(--border)" stroke-width="1" stroke-dasharray="2,3"/>
+      <text x="${padL - 8}" y="${(y + 3).toFixed(1)}" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="9" fill="var(--text-dim)">$${val.toFixed(3)}</text>`;
+  }).join('');
+
+  const skipEvery = Math.max(1, Math.ceil(coords.length / 6));
+  const xLabels = coords.map((c, i) => {
+    if (i % skipEvery !== 0 && i !== coords.length - 1) return '';
+    return `<text x="${c.x.toFixed(1)}" y="${h - 8}" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="var(--text-dim)">${formatDateShort(c.date)}</text>`;
+  }).join('');
+
+  const dots = coords.map((c, i) => `
+    <circle cx="${c.x.toFixed(1)}" cy="${c.y.toFixed(1)}" r="4" fill="var(--bg-card)" stroke="var(--accent-green)" stroke-width="2"
+      style="cursor:pointer;" onmouseenter="hoverTrendPoint(${i}, event)" onmousemove="moveChartTooltip(event)" onmouseleave="hideChartTooltip()"></circle>
+  `).join('');
+
+  wrap.innerHTML = `
+    <svg width="100%" viewBox="0 0 ${w} ${h}" style="overflow:visible; display:block;">
+      <defs>
+        <linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="var(--accent-green)" stop-opacity="0.25"/>
+          <stop offset="100%" stop-color="var(--accent-green)" stop-opacity="0"/>
+        </linearGradient>
+      </defs>
+      ${gridLines}
+      <path d="${areaPath}" fill="url(#trendFill)" stroke="none"/>
+      <path d="${linePath}" fill="none" stroke="var(--accent-green)" stroke-width="2"/>
+      ${dots}
+      ${xLabels}
+    </svg>
+  `;
+}
+
+function hoverTrendPoint(i, evt) {
+  const ds = window._trendDataset;
+  if (!ds) return;
+  const p = ds.points[i];
+  showChartTooltip(`<strong>${formatDateShort(p.date)}</strong><br>$${p.value.toFixed(4)} /1K out`, evt);
+}
+
+async function reloadPricingData() {
+  pricingData = await fetch('/api/pricing').then(r => r.json());
+  pricingHistory = await fetch('/api/pricing/history').then(r => r.json());
+  buildTicker();
+  buildMarket();
+  buildArbModelSelect();
+}
+
+// ── CLAUDE-ASSISTED PRICING REFRESH ──
+async function refreshPricing() {
+  const btn = document.getElementById('refreshBtn');
+  const status = document.getElementById('refreshStatus');
+  btn.disabled = true;
+  btn.textContent = 'Searching...';
+  status.textContent = '';
+  status.className = '';
+
+  try {
+    const res = await fetch('/api/pricing/refresh', {method: 'POST'});
+    const data = await res.json();
+
+    if (data.error) {
+      status.textContent = '⚠ ' + data.error;
+      status.style.color = 'var(--accent-red)';
+      if (data.error.includes('Could not reach') || data.error.includes('URLError')) {
+        status.textContent += ' — The app works fully offline; this only affects the live pricing refresh.';
+      }
+    } else {
+      const errNote = data.errors && data.errors.length ? `, ${data.errors.length} provider(s) had issues` : '';
+      status.textContent = `Checked ${data.providers_checked} providers — ${data.models_found} models found, ${data.proposals_created} proposals (${data.new_count} new, ${data.updated_count} changed, ${data.retired_count} retired)${errNote}`;
+      status.style.color = 'var(--text-secondary)';
+      await loadProposals();
+      await reloadPricingData();
+    }
+  } catch (e) {
+    status.textContent = '⚠ Request failed: ' + e.message;
+    status.style.color = 'var(--accent-red)';
+  }
+
+  btn.disabled = false;
+  btn.textContent = '↻ Refresh Pricing';
+}
+
+async function loadProposals() {
+  const res = await fetch('/api/pricing/proposals');
+  proposalsCache = await res.json();
+  renderProposals();
+}
+
+function onProposalsFilterChange() {
+  proposalsProviderFilter = document.getElementById('proposalsProviderFilter').value;
+  renderProposals();
+}
+
+function renderProposals() {
+  const section = document.getElementById('proposalsSection');
+  const tbody = document.getElementById('proposalsTableBody');
+  const countEl = document.getElementById('proposalsCount');
+  const filterSel = document.getElementById('proposalsProviderFilter');
+
+  const proposals = proposalsCache;
+
+  if (!proposals.length) {
+    section.style.display = 'none';
+    tbody.innerHTML = '';
+    return;
+  }
+  section.style.display = 'block';
+
+  // Populate provider dropdown (preserve current selection if still valid)
+  const providerCounts = {};
+  proposals.forEach(p => { providerCounts[p.provider] = (providerCounts[p.provider] || 0) + 1; });
+  const providerNames = Object.keys(providerCounts).sort();
+  filterSel.innerHTML = `<option value="">All Providers (${proposals.length})</option>` +
+    providerNames.map(p => `<option value="${p}">${p} (${providerCounts[p]})</option>`).join('');
+  // Reset selection if the previously-filtered provider is gone (e.g. after approving all of its proposals)
+  if (proposalsProviderFilter && !providerCounts[proposalsProviderFilter]) {
+    proposalsProviderFilter = '';
+  }
+  filterSel.value = proposalsProviderFilter;
+
+  // Apply filter
+  const visible = proposalsProviderFilter
+    ? proposals.filter(p => p.provider === proposalsProviderFilter)
+    : proposals;
+
+  countEl.textContent = proposalsProviderFilter
+    ? `(${visible.length} of ${proposals.length})`
+    : `(${proposals.length})`;
+
+  tbody.innerHTML = visible.map(p => {
+    let badge;
+    if (p.change_type === 'new') badge = '<span class="fit-badge" style="background:var(--accent-blue-dim); color:var(--accent-blue); border:1px solid rgba(77,159,255,0.35);">New Model</span>';
+    else if (p.change_type === 'retired') badge = '<span class="fit-badge fit-under">Retired</span>';
+    else badge = p.needs_review ? '<span class="fit-badge fit-over">Needs Review</span>' : '<span class="fit-badge fit-matched">Safe</span>';
+
+    const prevCell = (p.prev_input_cost == null)
+      ? '<span class="dim">—</span>'
+      : `$${p.prev_input_cost.toFixed(2)} / $${p.prev_output_cost.toFixed(2)}`;
+    const newCell = (p.change_type === 'retired')
+      ? '<span class="dim">no longer listed</span>'
+      : `<span class="green">$${p.input_cost.toFixed(2)}</span> / <span class="amber">$${p.output_cost.toFixed(2)}</span>`;
+    const changeColor = (p.pct_change_input == null || p.change_type === 'retired') ? 'dim'
+      : (Math.abs(p.pct_change_input) > 0.05 ? (p.pct_change_input > 0 ? 'red' : 'green') : 'dim');
+    const changeCell = (p.pct_change_input == null || p.change_type === 'retired')
+      ? '—' : `${p.pct_change_input > 0 ? '+' : ''}${p.pct_change_input}%`;
+
+    return `<tr>
+      <td style="font-family:Inter; font-weight:600; color:var(--text-secondary)">${p.provider}</td>
+      <td style="font-weight:700; color:var(--text-primary)">${p.model}</td>
+      <td class="text-right dim">${prevCell}</td>
+      <td class="text-right">${newCell}</td>
+      <td class="text-right ${changeColor}">${changeCell}</td>
+      <td>${badge}</td>
+      <td class="text-right">
+        <button class="btn-mini btn-mini-approve" onclick="approveProposal(${p.id})">✓</button>
+        <button class="btn-mini btn-mini-reject" onclick="rejectProposal(${p.id})">✕</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+async function approveProposal(id) {
+  await fetch(`/api/pricing/proposals/${id}/approve`, {method: 'POST'});
+  await loadProposals();
+  await reloadPricingData();
+}
+
+async function rejectProposal(id) {
+  await fetch(`/api/pricing/proposals/${id}/reject`, {method: 'POST'});
+  await loadProposals();
+}
+
+async function approveSafeProposals() {
+  const res = await fetch('/api/pricing/proposals/approve-safe', {method: 'POST'});
+  const data = await res.json();
+  document.getElementById('refreshStatus').textContent = `Approved ${data.approved_count} safe proposal(s)`;
+  document.getElementById('refreshStatus').style.color = 'var(--accent-green)';
+  await loadProposals();
+  await reloadPricingData();
+}
+
+async function rejectAllProposals() {
+  if (!confirm('Reject all pending proposals? This clears every proposal from the current refresh.')) return;
+  const res = await fetch('/api/pricing/proposals/reject-all', {method: 'POST'});
+  const data = await res.json();
+  document.getElementById('refreshStatus').textContent = `Rejected ${data.rejected_count} proposal(s)`;
+  document.getElementById('refreshStatus').style.color = 'var(--accent-amber)';
+  await loadProposals();
+  await reloadPricingData();
+}
+
+// ── ANALYTICS ──
+async function loadAnalytics() {
+  const data = await fetch('/api/usage/analytics').then(r => r.json());
+  const s = data.summary;
+  const contentDiv = document.getElementById('analyticsContent');
+  const kpiDiv = document.getElementById('analyticsKpis');
+  const emptyDiv = document.getElementById('analyticsEmpty');
+  const deptChart = document.getElementById('deptChart');
+  const modelChart = document.getElementById('modelChart');
+  const taskChart = document.getElementById('taskChart');
+  const empTable = document.getElementById('employeeTableBody');
+
+  if (!s.total_records || s.total_records === 0) {
+    contentDiv.style.display = 'none';
+    emptyDiv.style.display = 'flex';
+    return;
+  }
+  contentDiv.style.display = 'block';
+  emptyDiv.style.display = 'none';
+
+  kpiDiv.innerHTML = `
+    <div class="card"><div class="card-header">Total Spend</div><div class="card-value green" id="kpiSpend">$0.00</div><div class="card-sub">${s.total_records.toLocaleString()} records</div></div>
+    <div class="card"><div class="card-header">Total Tokens</div><div class="card-value blue" id="kpiTokens">0</div><div class="card-sub">input + output</div></div>
+    <div class="card"><div class="card-header">Active Users</div><div class="card-value" id="kpiUsers">0</div><div class="card-sub">${s.total_departments} departments</div></div>
+    <div class="card"><div class="card-header">Cost per User</div><div class="card-value amber" id="kpiCostUser">$0.00</div><div class="card-sub">avg monthly</div></div>
+  `;
+  animateValue(document.getElementById('kpiSpend'), s.total_spend, {decimals: 2, prefix: '$'});
+  animateValue(document.getElementById('kpiTokens'), s.total_tokens, {formatFn: v => formatTokens(v)});
+  animateValue(document.getElementById('kpiUsers'), s.total_users, {decimals: 0});
+  animateValue(document.getElementById('kpiCostUser'), s.total_spend / s.total_users, {decimals: 2, prefix: '$'});
+
+  const maxDeptSpend = Math.max(...data.by_department.map(d => d.spend));
+  const colors = ['fill-blue','fill-green','fill-amber','fill-purple','fill-red','fill-blue'];
+  deptChart.innerHTML = '<div class="bar-chart">' + data.by_department.map((d, i) => {
+    const pct = (d.spend / maxDeptSpend * 100).toFixed(1);
+    return `<div class="bar-row">
+      <div class="bar-label">${d.department}</div>
+      <div class="bar-track"><div class="bar-fill ${colors[i%colors.length]}" style="width:${pct}%">$${d.spend.toFixed(2)}</div></div>
+    </div>`;
+  }).join('') + '</div>';
+
+  const maxModelSpend = Math.max(...data.by_model.map(d => d.spend));
+  modelChart.innerHTML = '<div class="bar-chart">' + data.by_model.slice(0, 8).map((d, i) => {
+    const pct = (d.spend / maxModelSpend * 100).toFixed(1);
+    return `<div class="bar-row">
+      <div class="bar-label">${d.model}</div>
+      <div class="bar-track"><div class="bar-fill ${colors[i%colors.length]}" style="width:${pct}%">$${d.spend.toFixed(2)}</div></div>
+    </div>`;
+  }).join('') + '</div>';
+
+  const taskData = data.by_task_type || [];
+  if (taskData.length) {
+    const maxTaskSpend = Math.max(...taskData.map(d => d.spend));
+    taskChart.innerHTML = '<div class="bar-chart">' + taskData.map((d, i) => {
+      const pct = (d.spend / maxTaskSpend * 100).toFixed(1);
+      const label = d.task_type.replace(/\b\w/g, c => c.toUpperCase());
+      return `<div class="bar-row">
+        <div class="bar-label">${label}</div>
+        <div class="bar-track"><div class="bar-fill ${colors[i%colors.length]}" style="width:${pct}%">$${d.spend.toFixed(2)}</div></div>
+      </div>`;
+    }).join('') + '</div>';
+  } else {
+    taskChart.innerHTML = '';
+  }
+
+  empTable.innerHTML = data.by_employee.map(e => `<tr>
+    <td style="font-family:Inter; font-weight:700; color:var(--text-primary)">${e.employee}</td>
+    <td style="font-family:Inter; font-weight:600; color:var(--text-secondary)">${e.department}</td>
+    <td style="font-family:Inter; font-weight:600; color:var(--text-dim); font-size:11px">${e.role}</td>
+    <td class="text-right">${formatTokens(e.tokens)}</td>
+    <td class="text-right green">$${e.spend.toFixed(2)}</td>
+  </tr>`).join('');
+}
+
+function formatTokens(n) {
+  if (n >= 1e9) return (n/1e9).toFixed(1) + 'B';
+  if (n >= 1e6) return (n/1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return (n/1e3).toFixed(1) + 'K';
+  return Math.round(n).toString();
+}
+
+// ── INSIGHTS ──
+async function loadInsights() {
+  const emptyDiv = document.getElementById('insightsEmpty');
+  const bodyDiv = document.getElementById('insightsBody');
+
+  const [arb, fit] = await Promise.all([
+    fetch('/api/insights/arbitrage-scan').then(r => r.json()),
+    fetch('/api/insights/role-fit').then(r => r.json()),
+  ]);
+
+  if (!arb.summary.groups_scanned || arb.summary.groups_scanned === 0) {
+    bodyDiv.style.display = 'none';
+    emptyDiv.style.display = 'flex';
+    return;
+  }
+  emptyDiv.style.display = 'none';
+  bodyDiv.style.display = 'block';
+
+  renderArbScan(arb);
+  renderRoleFit(fit);
+}
+
+function renderArbScan(arb) {
+  const s = arb.summary;
+  document.getElementById('arbScanKpis').innerHTML = `
+    <div class="card"><div class="card-header">Groups Scanned</div><div class="card-value blue" id="arbKpiGroups">0</div><div class="card-sub">employee × model × task</div></div>
+    <div class="card"><div class="card-header">Opportunities Found</div><div class="card-value" id="arbKpiOpps">0</div><div class="card-sub">cheaper alternatives available</div></div>
+    <div class="card"><div class="card-header">Monthly Savings</div><div class="card-value green" id="arbKpiMonthly">$0.00</div><div class="card-sub">if all applied</div></div>
+    <div class="card"><div class="card-header">Annual Impact</div><div class="card-value green" id="arbKpiAnnual">$0.00</div><div class="card-sub">projected</div></div>
+  `;
+  animateValue(document.getElementById('arbKpiGroups'), s.groups_scanned, {decimals: 0});
+  animateValue(document.getElementById('arbKpiOpps'), s.opportunities_found, {decimals: 0});
+  animateValue(document.getElementById('arbKpiMonthly'), s.total_monthly_savings, {decimals: 2, prefix: '$'});
+  animateValue(document.getElementById('arbKpiAnnual'), s.total_annual_savings, {decimals: 0, prefix: '$'});
+
+  const tbody = document.getElementById('arbScanTableBody');
+  if (arb.opportunities.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-dim); padding:24px;">No arbitrage opportunities found — usage is already cost-optimal.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = arb.opportunities.map(o => `<tr>
+    <td>
+      <div style="font-family:Inter; font-weight:700; color:var(--text-primary)">${o.employee}</div>
+      <div style="font-family:Inter; font-weight:600; color:var(--text-dim); font-size:10px;">${o.department}</div>
+    </td>
+    <td style="font-family:Inter; font-weight:600; color:var(--text-secondary); text-transform:capitalize;">${o.task_type}</td>
+    <td>
+      <span style="color:var(--text-secondary)">${o.current_model}</span>
+      <span class="arb-arrow" style="margin:0 4px;">→</span>
+      <span style="color:var(--text-primary)">${o.recommended_model}</span>
+    </td>
+    <td class="text-right green">$${o.monthly_savings.toFixed(2)}</td>
+    <td class="text-right green">$${o.annual_savings.toFixed(0)}</td>
+    <td class="text-right ${o.confidence >= 85 ? 'green' : o.confidence >= 70 ? 'amber' : 'red'}">${o.confidence}%${o.quality_estimated ? ' <span style="color:var(--text-dim); font-size:9px; font-weight:600;" title="Quality score is a tier-baseline estimate, not hand-tuned">est.</span>' : ''}</td>
+  </tr>`).join('');
+}
+
+function renderRoleFit(fit) {
+  roleFitData = fit;
+  selectedRoleFitFilter = null;
+  const s = fit.summary;
+
+  document.getElementById('roleFitKpis').innerHTML = `
+    <div class="card rf-kpi-card" data-rffilter="matched" onclick="toggleRoleFitFilter('matched')">
+      <div class="card-header">Matched</div>
+      <div class="card-value green" id="fitKpiMatched">0</div>
+      <div class="card-sub">on the right tier</div>
+    </div>
+    <div class="card rf-kpi-card" data-rffilter="over" onclick="toggleRoleFitFilter('over')">
+      <div class="card-header">Over-Provisioned</div>
+      <div class="card-value amber" id="fitKpiOver">0</div>
+      <div class="card-sub">paying for more than needed</div>
+    </div>
+    <div class="card rf-kpi-card" data-rffilter="under" onclick="toggleRoleFitFilter('under')">
+      <div class="card-header">Under-Provisioned</div>
+      <div class="card-value red" id="fitKpiUnder">0</div>
+      <div class="card-sub">quality risk on high-stakes work</div>
+    </div>
+    <div class="card rf-kpi-card" data-rffilter="savings" onclick="toggleRoleFitFilter('savings')">
+      <div class="card-header">Recoverable Spend</div>
+      <div class="card-value green" id="fitKpiSavings">$0.00</div>
+      <div class="card-sub">from over-provisioned employees</div>
+    </div>
+  `;
+
+  animateValue(document.getElementById('fitKpiMatched'), s.matched, {decimals: 0});
+  animateValue(document.getElementById('fitKpiOver'), s.over_provisioned, {decimals: 0});
+  animateValue(document.getElementById('fitKpiUnder'), s.under_provisioned, {decimals: 0});
+  animateValue(document.getElementById('fitKpiSavings'), s.total_overprovision_savings, {decimals: 2, prefix: '$'});
+
+  renderRoleFitRows(fit.results);
+}
+
+const RF_FILTER_LABELS = {
+  matched: 'Matched',
+  over: 'Over-Provisioned',
+  under: 'Under-Provisioned',
+  savings: 'Has Recoverable Spend',
+};
+
+function toggleRoleFitFilter(filter) {
+  selectedRoleFitFilter = (selectedRoleFitFilter === filter) ? null : filter;
+
+  // Update card states
+  document.querySelectorAll('.rf-kpi-card').forEach(card => {
+    card.classList.remove('rf-active', 'rf-dimmed');
+    if (selectedRoleFitFilter) {
+      card.classList.add(card.dataset.rffilter === selectedRoleFitFilter ? 'rf-active' : 'rf-dimmed');
+    }
+  });
+
+  // Update filter pill
+  const pill = document.getElementById('roleFitFilterPill');
+  if (selectedRoleFitFilter) {
+    pill.innerHTML = `<span class="rf-filter-pill" onclick="toggleRoleFitFilter('${selectedRoleFitFilter}')">
+      <span class="rf-filter-pill-dot"></span>
+      Showing: ${RF_FILTER_LABELS[selectedRoleFitFilter]}
+      &nbsp;✕
+    </span>`;
+  } else {
+    pill.innerHTML = '';
+  }
+
+  if (roleFitData) renderRoleFitRows(roleFitData.results);
+}
+
+function renderRoleFitRows(results) {
+  const tbody = document.getElementById('roleFitTableBody');
+  const badgeClass = {over: 'fit-over', under: 'fit-under', matched: 'fit-matched'};
+  const badgeLabel = {over: 'Over-Provisioned', under: 'Under-Provisioned', matched: 'Matched'};
+
+  const filterFn = {
+    matched:  r => r.status === 'matched',
+    over:     r => r.status === 'over',
+    under:    r => r.status === 'under',
+    savings:  r => r.potential_savings > 0,
+  };
+
+  const filtered = selectedRoleFitFilter
+    ? results.filter(filterFn[selectedRoleFitFilter])
+    : results;
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-dim); padding:28px;">No employees match this filter.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(r => `<tr>
+    <td style="font-family:Inter; font-weight:700; color:var(--text-primary)">${r.employee}</td>
+    <td style="font-family:Inter; font-weight:600; color:var(--text-secondary); font-size:11px;">${r.role}</td>
+    <td>${r.primary_model} <span class="dim" style="font-size:10px;">(${r.model_tier})</span></td>
+    <td><span class="fit-badge ${badgeClass[r.status]}">${badgeLabel[r.status]}</span></td>
+    <td class="text-right ${r.potential_savings > 0 ? 'green' : 'dim'}">${r.potential_savings > 0 ? '$' + r.potential_savings.toFixed(2) : '—'}</td>
+  </tr>`).join('');
+}
+
+// ── ARBITRAGE ──
+function buildArbModelSelect() {
+  const sel = document.getElementById('arbModel');
+  sel.innerHTML = pricingData.map(m => `<option value="${m.model}">${m.model} (${m.provider})</option>`).join('');
+}
+
+async function runArbitrage() {
+  const model = document.getElementById('arbModel').value;
+  const task = document.getElementById('arbTask').value;
+  const tokens = parseInt(document.getElementById('arbTokens').value);
+  const res = await fetch('/api/arbitrage', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({model, task_type: task, monthly_tokens: tokens})
+  });
+  const results = await res.json();
+  const container = document.getElementById('arbResults');
+  const empty = document.getElementById('arbEmpty');
+
+  if (results.length === 0) {
+    container.innerHTML = '';
+    empty.style.display = 'flex';
+    empty.innerHTML = '<div class="empty-state"><div class="icon">✅</div><div class="sub">No cheaper alternatives found — you\'re already optimized for this task.</div></div>';
+    return;
+  }
+  empty.style.display = 'none';
+
+  container.innerHTML = results.map(r => `<div class="arb-card">
+    <div class="arb-switch">
+      <span style="color:var(--text-secondary)">${r.current_model}</span>
+      <span class="arb-arrow">→</span>
+      <span style="color:var(--text-primary)">${r.recommended_model}</span>
+      <span class="dim" style="font-size:11px; font-weight:600;">(${r.provider})</span>
+    </div>
+    <div>
+      <div class="arb-metric-label">Monthly Savings</div>
+      <div class="arb-metric-value green">$${(r.current_cost_monthly - r.new_cost_monthly).toFixed(2)}</div>
+    </div>
+    <div>
+      <div class="arb-metric-label">Annual Impact</div>
+      <div class="arb-metric-value green">$${r.annual_savings.toFixed(0)}</div>
+    </div>
+    <div>
+      <div class="arb-metric-label">Savings</div>
+      <div class="arb-metric-value amber">${r.savings_pct}%</div>
+    </div>
+    <div>
+      <div class="arb-metric-label">Confidence</div>
+      <div class="arb-metric-value ${r.confidence >= 85 ? 'green' : r.confidence >= 70 ? 'amber' : 'red'}">${r.confidence}%</div>
+    </div>
+  </div>`).join('');
+}
+
+// ── ROLE RECOMMENDER ──
+function buildRoleSelects() {
+  const industries = [...new Set(Object.values(rolesData).map(r => r.industry))].sort();
+  document.getElementById('recIndustry').innerHTML = '<option value="">All Industries</option>' +
+    industries.map(i => `<option value="${i}">${i}</option>`).join('');
+  filterRoles();
+}
+
+function filterRoles() {
+  const industry = document.getElementById('recIndustry').value;
+  const roles = Object.entries(rolesData)
+    .filter(([_, r]) => !industry || r.industry === industry)
+    .sort((a, b) => a[0].localeCompare(b[0]));
+  document.getElementById('recRole').innerHTML = roles.map(([name, _]) =>
+    `<option value="${name}">${name}</option>`
+  ).join('');
+}
+
+async function getRecommendation() {
+  const role = document.getElementById('recRole').value;
+  const res = await fetch('/api/recommend', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({role})
+  });
+  const r = await res.json();
+  if (r.error) return;
+
+  const tierClass = 'tier-' + r.tier;
+  const budget = formatTokens(r.monthly_token_budget);
+
+  document.getElementById('recResult').innerHTML = `<div class="rec-card">
+    <div class="rec-header">
+      <div>
+        <div class="rec-role">${r.role}</div>
+        <div style="font-size:12px; font-weight:600; color:var(--text-secondary); margin-top:2px;">${r.industry}</div>
+      </div>
+      <div class="rec-tier ${tierClass}">${r.tier} tier</div>
+    </div>
+    <div class="rec-meta">
+      <span>Complexity: <strong>${r.complexity}/5</strong></span>
+      <span>Stakes: <strong>${r.stakes}/5</strong></span>
+      <span>Volume: <strong>${r.volume}</strong></span>
+      <span>Budget: <strong class="green">${budget} tokens/mo</strong></span>
+    </div>
+    <div class="rec-tasks">${r.tasks.map(t => `<span class="rec-task-tag">${t}</span>`).join('')}</div>
+    <div style="margin-bottom:12px; font-size:11px; font-weight:700; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.8px;">Recommended Models</div>
+    <div class="rec-models">${r.recommended_models.map(m => `
+      <div class="rec-model-card">
+        <div class="rec-model-name">${m.model}</div>
+        <div class="rec-model-provider">${m.provider} — $${m.input_cost}/$${m.output_cost} per 1M</div>
+        <div class="rec-model-cost">$${m.monthly_cost.toFixed(2)}</div>
+        <div class="rec-model-cost-label">est. monthly cost</div>
+      </div>
+    `).join('')}</div>
+    <div class="rec-reasoning">${r.reasoning}</div>
+    <div class="rec-upgrade">⚠ ${r.upgrade_trigger}</div>
+    <div class="estimate-disclaimer" style="margin-top:10px;">
+      Monthly costs are estimates based on the token budget above and a 60/40 input/output split. Actual costs will depend on real usage patterns.
+    </div>
+  </div>`;
+}
+
+// ── ONBOARDING ──
+function buildOnboardSelects() {
+  if (!document.getElementById('obIndustry')) return; // panel replaced — skip safely
+  const industries = [...new Set(Object.values(rolesData).map(r => r.industry))].sort();
+  document.getElementById('obIndustry').innerHTML = '<option value="">All Industries</option>' +
+    industries.map(i => `<option value="${i}">${i}</option>`).join('');
+  filterOnboardRoles();
+}
+
+function filterOnboardRoles() {
+  if (!document.getElementById('obIndustry')) return; // panel replaced — skip safely
+  const industry = document.getElementById('obIndustry').value;
+  const roles = Object.entries(rolesData)
+    .filter(([_, r]) => !industry || r.industry === industry)
+    .sort((a, b) => a[0].localeCompare(b[0]));
+  document.getElementById('obRole').innerHTML = roles.map(([name, _]) =>
+    `<option value="${name}">${name}</option>`
+  ).join('');
+}
+
+async function getOnboardPlan() {
+  const role = document.getElementById('obRole').value;
+  const res = await fetch('/api/onboard', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({role})
+  });
+  const r = await res.json();
+  if (r.error) return;
+
+  const tierClass = 'tier-' + r.tier;
+  const maxPhaseDays = Math.max(...r.phases.map(p => p.days));
+
+  document.getElementById('obResult').innerHTML = `<div class="ob-card">
+    <div class="ob-header">
+      <div>
+        <div class="ob-role">${r.role}</div>
+        <div style="font-size:12px; font-weight:600; color:var(--text-secondary); margin-top:2px;">${r.industry}</div>
+      </div>
+      <div class="ob-multiplier">${r.kw_multiplier}x</div>
+    </div>
+
+    <div class="ob-kpis">
+      <div class="ob-kpi">
+        <div class="ob-kpi-value">${r.total_days}</div>
+        <div class="ob-kpi-label">Days to Productive</div>
+      </div>
+      <div class="ob-kpi">
+        <div class="ob-kpi-value">${r.total_weeks}</div>
+        <div class="ob-kpi-label">Business Weeks</div>
+      </div>
+      <div class="ob-kpi">
+        <div class="ob-kpi-value"><span class="rec-tier ${tierClass}" style="font-size:12px;">${r.tier}</span></div>
+        <div class="ob-kpi-label">Model Tier</div>
+      </div>
+      <div class="ob-kpi">
+        <div class="ob-kpi-value">${formatTokens(r.monthly_token_budget)}</div>
+        <div class="ob-kpi-label">Tokens / Month</div>
+      </div>
+    </div>
+
+    <div style="margin-bottom:8px; font-size:11px; font-weight:700; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.8px;">Multiplier Factors</div>
+    <div class="ob-factors">
+      ${Object.entries(r.factors).map(([key, f]) => {
+        const labels = {complexity:'Complexity', stakes:'Stakes', task_diversity:'Task Diversity', industry_sensitivity:'Industry', tier_complexity:'Tier'};
+        const vals = {complexity: f.value+'/5', stakes: f.value+'/5', task_diversity: f.count+' types', industry_sensitivity: f.industry, tier_complexity: f.tier};
+        return `<div class="ob-factor">
+          <div class="ob-factor-label">${labels[key] || key}</div>
+          <div class="ob-factor-value">${vals[key]} <span style="color:var(--accent-amber); font-size:11px;">×${f.factor}</span></div>
+        </div>`;
+      }).join('')}
+    </div>
+
+    <div style="margin-bottom:8px; font-size:11px; font-weight:700; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.8px;">Onboarding Phases</div>
+    <div class="ob-phases">
+      ${r.phases.map(p => `<div class="ob-phase">
+        <div class="ob-phase-bar">
+          <div class="ob-phase-fill" style="width:${Math.round(p.days / maxPhaseDays * 100)}%"></div>
+          <div>
+            <div class="ob-phase-label">${p.label}</div>
+            <div class="ob-phase-desc">${p.description}</div>
+          </div>
+          <div class="ob-phase-days">${p.days}d</div>
+        </div>
+      </div>`).join('')}
+    </div>
+
+    <div style="margin-bottom:8px; font-size:11px; font-weight:700; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.8px;">Milestones</div>
+    <div class="ob-milestones">
+      ${r.milestones.map(m => `<div class="ob-milestone">
+        <div class="ob-milestone-day">Day ${m.day}</div>
+        <div class="ob-milestone-label">${m.label}</div>
+        <div class="ob-milestone-desc">${m.description}</div>
+      </div>`).join('')}
+    </div>
+
+    ${r.risks.length ? `
+    <div style="margin-bottom:8px; font-size:11px; font-weight:700; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.8px;">Risk Factors</div>
+    <div class="ob-risks">
+      ${r.risks.map(rk => `<div class="ob-risk">
+        <span class="ob-risk-badge ${rk.level}">${rk.level}</span>
+        <span style="color:var(--text-primary); font-weight:700;">${rk.factor}</span>
+        <span style="color:var(--text-dim);">— ${rk.detail}</span>
+      </div>`).join('')}
+    </div>` : ''}
+
+    <div class="ob-reasoning">${r.reasoning}</div>
+
+    <div class="estimate-disclaimer" style="margin-top:12px;">
+      These time estimates, token budgets, and multiplier scores are directional based on role profiles and stated assumptions — not guarantees. Quality scores reflect hand-curated data where available and price-tier estimates otherwise.
+    </div>
+
+    ${hasAnthropicKey
+      ? `<button class="btn btn-primary" onclick="validateOnboardPlan()" id="obValidateBtn" style="width:100%; margin-top:14px;">
+          🤖 Validate with AI
+        </button>`
+      : `<div class="ai-disabled-notice" style="margin-top:14px;">
+          🔑 Add your Anthropic API key in <a onclick="switchTabDirect('settings')" style="color:var(--accent-green); cursor:pointer; text-decoration:underline;">Settings</a> to enable AI validation.
+        </div>`
+    }
+    <div id="obValidation"></div>
+  </div>`;
+
+  // Store for validation
+  window._lastOnboardPlan = r;
+}
+
+async function validateOnboardPlan() {
+  const r = window._lastOnboardPlan;
+  if (!r) return;
+
+  const btn = document.getElementById('obValidateBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Validating…';
+
+  const validationDiv = document.getElementById('obValidation');
+  validationDiv.innerHTML = '<div style="padding:12px; font-size:12px; color:var(--text-dim); font-weight:600;">Asking Claude to review the onboarding plan…</div>';
+
+  const prompt = `You are an enterprise AI adoption and workforce onboarding expert. A system has generated an AI onboarding plan for a new employee. Review it for reasonableness and provide a brief, actionable assessment.
+
+Role: ${r.role} (${r.industry})
+Model Tier: ${r.tier}
+Knowledge Worker Multiplier: ${r.kw_multiplier}x
+Estimated Time-to-Productivity: ${r.total_days} business days (${r.total_weeks} weeks)
+Monthly Token Budget: ${r.monthly_token_budget} tokens
+
+Tasks: ${r.tasks.join(', ')}
+
+Onboarding Phases:
+${r.phases.map(p => `- ${p.label}: ${p.days} days — ${p.description}`).join('\n')}
+
+Milestones:
+${r.milestones.map(m => `- Day ${m.day}: ${m.label}`).join('\n')}
+
+Risk Factors:
+${r.risks.map(rk => `- [${rk.level}] ${rk.factor}: ${rk.detail}`).join('\n')}
+
+Respond ONLY with a JSON object (no markdown, no backticks) with these fields:
+- "verdict": one of "reasonable", "optimistic", "conservative", or "unrealistic"
+- "confidence": a number 1-100 for how confident you are in this assessment
+- "time_assessment": one sentence on whether the ${r.total_days}-day estimate is realistic for this role
+- "phase_feedback": one sentence on the phase breakdown
+- "risks_feedback": one sentence on whether the flagged risks are appropriate
+- "suggestion": one actionable recommendation to improve this onboarding plan
+- "adjusted_days": your recommended number of days if different, or null if the estimate is fine`;
+
+  try {
+    const response = await fetch('/api/onboard/validate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, system_days: r.total_days, role: r.role })
+    });
+
+    const v = await response.json();
+    if (v.error) throw new Error(v.error);
+
+    const verdictColors = {
+      reasonable: 'var(--accent-green)',
+      optimistic: 'var(--accent-amber)',
+      conservative: 'var(--accent-blue)',
+      unrealistic: '#ff4d4d'
+    };
+    const verdictBg = {
+      reasonable: 'var(--accent-green-dim)',
+      optimistic: 'var(--accent-amber-dim)',
+      conservative: 'var(--accent-blue-dim)',
+      unrealistic: 'rgba(255,77,77,0.12)'
+    };
+    const vc = verdictColors[v.verdict] || 'var(--text-secondary)';
+    const vb = verdictBg[v.verdict] || 'var(--bg-input)';
+
+    validationDiv.innerHTML = `
+      <div style="margin-top:14px; background:var(--bg-input); border:1px solid var(--border); border-radius:8px; padding:16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <div style="font-size:11px; font-weight:700; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.8px;">AI Validation</div>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span style="font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:700; color:var(--text-dim);">${v.confidence}% confidence</span>
+            <span style="padding:3px 10px; border-radius:4px; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:0.5px; background:${vb}; color:${vc};">${v.verdict}</span>
+          </div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:8px; font-size:12px; font-weight:600;">
+          <div><span style="color:var(--text-dim);">Timeline:</span> <span style="color:var(--text-secondary);">${v.time_assessment}</span></div>
+          <div><span style="color:var(--text-dim);">Phases:</span> <span style="color:var(--text-secondary);">${v.phase_feedback}</span></div>
+          <div><span style="color:var(--text-dim);">Risks:</span> <span style="color:var(--text-secondary);">${v.risks_feedback}</span></div>
+          <div style="margin-top:4px; padding:8px 10px; background:var(--bg-card); border-radius:5px; border-left:3px solid var(--accent-green);">
+            <span style="color:var(--accent-green); font-weight:700;">💡 Suggestion:</span>
+            <span style="color:var(--text-primary);">${v.suggestion}</span>
+          </div>
+          ${v.adjusted_days ? `<div style="margin-top:2px; font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--accent-amber);">⟳ AI-adjusted estimate: ${v.adjusted_days} days (vs. ${r.total_days} system-generated)</div>` : ''}
+          ${v.insight_stored ? `<div style="margin-top:6px; padding:5px 10px; background:rgba(99,102,241,0.1); border:1px solid rgba(99,102,241,0.25); border-radius:5px; font-size:11px; font-weight:700; color:#818cf8;">📊 Discrepancy of ${v.discrepancy_pct}% logged to database for review</div>` : ''}
+        </div>
+      </div>`;
+  } catch (err) {
+    console.error('Validation error:', err);
+    validationDiv.innerHTML = `<div style="margin-top:12px; padding:10px; font-size:12px; font-weight:600; color:#ff4d4d; background:rgba(255,77,77,0.08); border-radius:6px;">Validation failed — ${err.message}</div>`;
+  }
+
+  btn.disabled = false;
+  btn.textContent = '🤖 Validate with AI';
+}
+
+// ── DATA MANAGER ──
+async function seedDemo() {
+  const btn = event.target;
+  btn.disabled = true;
+  btn.textContent = 'Loading...';
+  const res = await fetch('/api/usage/seed-demo', {method:'POST'});
+  const data = await res.json();
+  showStatus('seedStatus', `Loaded ${data.seeded} records across 6 departments.`, 'success');
+  btn.disabled = false;
+  btn.textContent = 'Load Demo Data';
+}
+
+async function importCSV() {
+  const file = document.getElementById('csvFile').files[0];
+  if (!file) { showStatus('importStatus', 'Select a CSV file first.', 'error'); return; }
+  const formData = new FormData();
+  formData.append('file', file);
+  try {
+    const res = await fetch('/api/usage/import', {method:'POST', body: formData});
+    const data = await res.json();
+    if (data.error) {
+      showStatus('importStatus', data.error, 'error');
+    } else {
+      let msg = data.summary || `Imported ${data.imported} records`;
+      if (data.errors && data.errors.length) {
+        msg += '. Issues: ' + data.errors.slice(0, 3).join('; ');
+        if (data.errors.length > 3) msg += ` (+${data.errors.length - 3} more)`;
+      }
+      showStatus('importStatus', msg, data.skipped > 0 ? 'error' : 'success');
+    }
+  } catch (e) {
+    showStatus('importStatus', 'Import failed: ' + e.message, 'error');
+  }
+}
+
+async function clearData() {
+  if (!confirm('Clear all usage data? Pricing history will be preserved.')) return;
+  await fetch('/api/usage/clear', {method:'POST'});
+  showStatus('clearStatus', 'All usage data cleared.', 'success');
+}
+
+function showStatus(id, msg, type) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.className = 'status-msg show ' + type;
+  setTimeout(() => el.className = 'status-msg', 4000);
+}
+
+// ── SETTINGS PANEL (PRD D1-D6) ──
+async function loadSettings() {
+  try {
+    const res = await fetch('/api/settings');
+    const s = await res.json();
+
+    // API Key
+    const keyInput = document.getElementById('settingsApiKey');
+    if (s.anthropic_api_key_set) {
+      keyInput.placeholder = s.anthropic_api_key_masked || '••••••••';
+      keyInput.value = '';
+    } else {
+      keyInput.placeholder = 'sk-ant-api03-…';
+    }
+
+    // Data location
+    document.getElementById('settingsDbPath').textContent = s.db_path || '—';
+    document.getElementById('settingsDataDir').textContent = s.data_dir || '—';
+    document.getElementById('settingsVersion').textContent = s.version || '—';
+
+    // Pricing summary — live counts of what's currently tracked
+    loadPricingSummary();
+  } catch (e) {
+    console.error('Failed to load settings:', e);
+  }
+}
+
+async function loadPricingSummary() {
+  try {
+    const res = await fetch('/api/pricing/summary');
+    const s = await res.json();
+    document.getElementById('settingsModelCount').textContent = s.model_count.toLocaleString();
+    document.getElementById('settingsProviderCount').textContent = s.provider_count.toLocaleString();
+  } catch (e) {
+    document.getElementById('settingsModelCount').textContent = '—';
+    document.getElementById('settingsProviderCount').textContent = '—';
+  }
+}
+
+async function clearPricingData() {
+  const btn = document.getElementById('clearPricingBtn');
+  // Two-step confirm: first click arms the button, second click fires.
+  // This matches the destructive-action pattern used elsewhere in the app
+  // without needing an extra modal.
+  if (btn.dataset.armed !== '1') {
+    btn.dataset.armed = '1';
+    const original = btn.textContent;
+    btn.dataset.original = original;
+    btn.textContent = '⚠ Click again to confirm — this wipes all pricing data';
+    setTimeout(() => {
+      if (btn.dataset.armed === '1') {
+        btn.dataset.armed = '0';
+        btn.textContent = btn.dataset.original || 'Clear All Pricing Data';
+      }
+    }, 4000);
+    return;
+  }
+  btn.dataset.armed = '0';
+  btn.textContent = 'Clearing…';
+  btn.disabled = true;
+
+  try {
+    const res = await fetch('/api/pricing/clear', {method: 'POST'});
+    const data = await res.json();
+    showStatus('clearPricingStatus',
+      `Cleared ${data.history_rows_deleted.toLocaleString()} pricing rows and ${data.proposals_deleted.toLocaleString()} pending proposals. Click Refresh Pricing in the sidebar to pull the live catalog, then approve only the providers you want.`,
+      'success');
+    // Refresh the summary counts + wipe in-memory market data so other tabs
+    // don't keep showing the pre-clear catalog until the user manually refreshes.
+    pricingData = [];
+    loadPricingSummary();
+  } catch (e) {
+    showStatus('clearPricingStatus', 'Failed to clear pricing data: ' + e.message, 'error');
+  } finally {
+    btn.textContent = btn.dataset.original || 'Clear All Pricing Data';
+    btn.disabled = false;
+  }
+}
+
+async function saveApiKey() {
+  const key = document.getElementById('settingsApiKey').value.trim();
+  if (!key) { showStatus('settingsKeyStatus', 'Enter an API key first.', 'error'); return; }
+  try {
+    const res = await fetch('/api/settings', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({anthropic_api_key: key})
+    });
+    const data = await res.json();
+    if (data.saved) {
+      hasAnthropicKey = true;
+      showStatus('settingsKeyStatus', 'API key saved.', 'success');
+      document.getElementById('settingsApiKey').value = '';
+      loadSettings();
+    }
+  } catch (e) {
+    showStatus('settingsKeyStatus', 'Failed to save: ' + e.message, 'error');
+  }
+}
+
+async function testApiKey() {
+  showStatus('settingsKeyStatus', 'Testing…', 'success');
+  try {
+    const res = await fetch('/api/settings/test-key', {method: 'POST'});
+    const data = await res.json();
+    showStatus('settingsKeyStatus', data.success ? '✓ ' + data.response : '✕ ' + data.error, data.success ? 'success' : 'error');
+  } catch (e) {
+    showStatus('settingsKeyStatus', 'Test failed: ' + e.message, 'error');
+  }
+}
+
+async function clearApiKey() {
+  if (!confirm('Remove the stored Anthropic API key? AI validation will be disabled.')) return;
+  try {
+    await fetch('/api/settings', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({anthropic_api_key: null})
+    });
+    hasAnthropicKey = false;
+    showStatus('settingsKeyStatus', 'API key cleared.', 'success');
+    loadSettings();
+  } catch (e) {
+    showStatus('settingsKeyStatus', 'Failed: ' + e.message, 'error');
+  }
+}
+
+function switchTabDirect(name) {
+  const navItem = document.querySelector(`.nav-item[data-tab="${name}"]`);
+  if (navItem) {
+    document.querySelectorAll('.nav-item').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    navItem.classList.add('active');
+    document.getElementById('panel-' + name).classList.add('active');
+    if (name === 'settings') loadSettings();
+  }
+}
+
+// ── WIDGET DRAG / RESIZE SYSTEM ──
+const WIDGET_DEFAULTS = {
+  kpi1:  { x: 0,    y: 0,   w: 24.5, h: 140, wu: '%', hu: 'px' },
+  kpi2:  { x: 25.2, y: 0,   w: 24.5, h: 140, wu: '%', hu: 'px' },
+  kpi3:  { x: 50.4, y: 0,   w: 24.5, h: 140, wu: '%', hu: 'px' },
+  kpi4:  { x: 75.6, y: 0,   w: 24.5, h: 140, wu: '%', hu: 'px' },
+  table: { x: 0,    y: 150, w: 100,  h: 350, wu: '%', hu: 'px' },
+  donut: { x: 0,    y: 510, w: 49,   h: 280, wu: '%', hu: 'px' },
+  trend: { x: 51,   y: 510, w: 49,   h: 280, wu: '%', hu: 'px' },
+};
+const WIDGET_MIN_W = 200;
+const WIDGET_MIN_H = 120;
+let widgetLayouts = {};
+
+function loadWidgetLayouts() {
+  try {
+    const saved = localStorage.getItem('ctsg_widget_layouts');
+    if (saved) widgetLayouts = JSON.parse(saved);
+  } catch (e) {}
+}
+function saveWidgetLayouts() {
+  localStorage.setItem('ctsg_widget_layouts', JSON.stringify(widgetLayouts));
+}
+function resetWidgetLayout() {
+  widgetLayouts = {};
+  localStorage.removeItem('ctsg_widget_layouts');
+  applyWidgetLayouts();
+}
+
+function applyWidgetLayouts() {
+  const canvas = document.getElementById('widgetCanvas');
+  if (!canvas) return;
+  const cw = canvas.offsetWidth;
+
+  document.querySelectorAll('.widget[data-wid]').forEach(w => {
+    const id = w.dataset.wid;
+    const layout = widgetLayouts[id] || WIDGET_DEFAULTS[id];
+    if (!layout) return;
+
+    const pxX = layout.wu === '%' ? (layout.x / 100 * cw) : layout.x;
+    const pxW = layout.wu === '%' ? (layout.w / 100 * cw) : layout.w;
+    const gap = 8;
+
+    w.style.left = pxX + 'px';
+    w.style.top = layout.y + 'px';
+    w.style.width = Math.max(WIDGET_MIN_W, pxW - gap) + 'px';
+    w.style.height = layout.h + 'px';
+  });
+
+  // Set canvas height to contain all widgets
+  let maxBottom = 0;
+  document.querySelectorAll('.widget[data-wid]').forEach(w => {
+    const b = w.offsetTop + w.offsetHeight;
+    if (b > maxBottom) maxBottom = b;
+  });
+  canvas.style.minHeight = (maxBottom + 20) + 'px';
+}
+
+function initWidgetSystem() {
+  loadWidgetLayouts();
+  applyWidgetLayouts();
+
+  // Reapply on resize
+  let resizeTimer;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(applyWidgetLayouts, 100);
+  });
+
+  // Drag from header
+  document.querySelectorAll('.widget-hdr').forEach(hdr => {
+    hdr.addEventListener('mousedown', startWidgetDrag);
+    hdr.addEventListener('touchstart', startWidgetDrag, {passive: false});
+  });
+
+  // Resize from handles
+  document.querySelectorAll('.widget .rh').forEach(handle => {
+    handle.addEventListener('mousedown', startWidgetResize);
+    handle.addEventListener('touchstart', startWidgetResize, {passive: false});
+  });
+}
+
+let _wDrag = null;
+function startWidgetDrag(e) {
+  const widget = e.target.closest('.widget');
+  if (!widget) return;
+  e.preventDefault();
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  const rect = widget.getBoundingClientRect();
+  _wDrag = {
+    widget, id: widget.dataset.wid,
+    offsetX: clientX - rect.left, offsetY: clientY - rect.top,
+    startLeft: widget.offsetLeft, startTop: widget.offsetTop,
+  };
+  widget.classList.add('widget-dragging');
+  document.body.classList.add('widget-interacting');
+
+  const onMove = (ev) => {
+    if (!_wDrag) return;
+    const cx = ev.touches ? ev.touches[0].clientX : ev.clientX;
+    const cy = ev.touches ? ev.touches[0].clientY : ev.clientY;
+    const canvas = document.getElementById('widgetCanvas');
+    const canvasRect = canvas.getBoundingClientRect();
+    let newLeft = cx - canvasRect.left - _wDrag.offsetX;
+    let newTop = cy - canvasRect.top - _wDrag.offsetY;
+    newLeft = Math.max(0, Math.min(newLeft, canvas.offsetWidth - _wDrag.widget.offsetWidth));
+    newTop = Math.max(0, newTop);
+    _wDrag.widget.style.left = newLeft + 'px';
+    _wDrag.widget.style.top = newTop + 'px';
+    updateCanvasHeight();
+  };
+  const onUp = () => {
+    if (!_wDrag) return;
+    _wDrag.widget.classList.remove('widget-dragging');
+    document.body.classList.remove('widget-interacting');
+    saveCurrentWidgetPos(_wDrag.widget);
+    _wDrag = null;
+    window.removeEventListener('mousemove', onMove);
+    window.removeEventListener('mouseup', onUp);
+    window.removeEventListener('touchmove', onMove);
+    window.removeEventListener('touchend', onUp);
+  };
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('mouseup', onUp);
+  window.addEventListener('touchmove', onMove, {passive: false});
+  window.addEventListener('touchend', onUp);
+}
+
+let _wResize = null;
+function startWidgetResize(e) {
+  const handle = e.target;
+  const widget = handle.closest('.widget');
+  if (!widget) return;
+  e.preventDefault();
+  e.stopPropagation();
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  const dir = [...handle.classList].find(c => c.startsWith('rh-') && c !== 'rh')?.replace('rh-', '') || '';
+  _wResize = {
+    widget, id: widget.dataset.wid, dir,
+    startX: clientX, startY: clientY,
+    startW: widget.offsetWidth, startH: widget.offsetHeight,
+    startLeft: widget.offsetLeft, startTop: widget.offsetTop,
+  };
+  widget.classList.add('widget-resizing');
+  document.body.classList.add('widget-interacting');
+
+  const onMove = (ev) => {
+    if (!_wResize) return;
+    const cx = ev.touches ? ev.touches[0].clientX : ev.clientX;
+    const cy = ev.touches ? ev.touches[0].clientY : ev.clientY;
+    const dx = cx - _wResize.startX;
+    const dy = cy - _wResize.startY;
+    const d = _wResize.dir;
+    let {startW, startH, startLeft, startTop} = _wResize;
+
+    if (d.includes('e')) startW = Math.max(WIDGET_MIN_W, startW + dx);
+    if (d.includes('w')) { startW = Math.max(WIDGET_MIN_W, startW - dx); startLeft = _wResize.startLeft + (_wResize.startW - startW); }
+    if (d.includes('s')) startH = Math.max(WIDGET_MIN_H, startH + dy);
+    if (d.includes('n')) { startH = Math.max(WIDGET_MIN_H, startH - dy); startTop = _wResize.startTop + (_wResize.startH - startH); }
+
+    _wResize.widget.style.width = startW + 'px';
+    _wResize.widget.style.height = startH + 'px';
+    _wResize.widget.style.left = Math.max(0, startLeft) + 'px';
+    _wResize.widget.style.top = Math.max(0, startTop) + 'px';
+    updateCanvasHeight();
+  };
+  const onUp = () => {
+    if (!_wResize) return;
+    _wResize.widget.classList.remove('widget-resizing');
+    document.body.classList.remove('widget-interacting');
+    saveCurrentWidgetPos(_wResize.widget);
+    _wResize = null;
+    window.removeEventListener('mousemove', onMove);
+    window.removeEventListener('mouseup', onUp);
+    window.removeEventListener('touchmove', onMove);
+    window.removeEventListener('touchend', onUp);
+  };
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('mouseup', onUp);
+  window.addEventListener('touchmove', onMove, {passive: false});
+  window.addEventListener('touchend', onUp);
+}
+
+function saveCurrentWidgetPos(w) {
+  const id = w.dataset.wid;
+  widgetLayouts[id] = {
+    x: w.offsetLeft, y: w.offsetTop,
+    w: w.offsetWidth, h: w.offsetHeight,
+    wu: 'px', hu: 'px',
+  };
+  saveWidgetLayouts();
+}
+
+function updateCanvasHeight() {
+  const canvas = document.getElementById('widgetCanvas');
+  let maxBottom = 0;
+  document.querySelectorAll('.widget[data-wid]').forEach(w => {
+    const b = w.offsetTop + w.offsetHeight;
+    if (b > maxBottom) maxBottom = b;
+  });
+  canvas.style.minHeight = (maxBottom + 20) + 'px';
+}
+
+
+// ══════════════════════════════════════════════════
+// ROI CALCULATOR
+// ══════════════════════════════════════════════════
+const ROI_MODELS = [
+  { id:'claude-opus-4-7',   name:'Claude Opus 4.7',   prov:'Anthropic', inPM:15.00, outPM:75.00 },
+  { id:'claude-sonnet-4-6', name:'Claude Sonnet 4.6', prov:'Anthropic', inPM: 3.00, outPM:15.00 },
+  { id:'claude-haiku-4-5',  name:'Claude Haiku 4.5',  prov:'Anthropic', inPM: 0.80, outPM: 4.00 },
+  { id:'gpt-5',             name:'GPT-5',             prov:'OpenAI',    inPM: 2.50, outPM:10.00 },
+  { id:'gpt-5-mini',        name:'GPT-5 Mini',        prov:'OpenAI',    inPM: 0.25, outPM: 2.00 },
+  { id:'gemini-2-5-pro',    name:'Gemini 2.5 Pro',    prov:'Google',    inPM: 1.25, outPM: 5.00 },
+  { id:'gemini-2-5-flash',  name:'Gemini 2.5 Flash',  prov:'Google',    inPM: 0.10, outPM: 0.40 },
+  { id:'deepseek-v3-1',     name:'DeepSeek V3.1',     prov:'DeepSeek',  inPM: 0.27, outPM: 1.10 },
+];
+
+function roiC(n) {
+  if (isNaN(n)||n===null) return '—';
+  const abs=Math.abs(n), sign=n<0?'-':'';
+  if(abs>=1e6) return sign+'$'+(abs/1e6).toFixed(1)+'M';
+  if(abs>=1000) return sign+'$'+(abs/1000).toFixed(abs>=100000?0:1)+'K';
+  return sign+'$'+abs.toLocaleString('en-US',{maximumFractionDigits:2});
+}
+function roiFull(n) {
+  if(isNaN(n)) return '—';
+  const sign=n<0?'-':'';
+  return sign+'$'+Math.abs(n).toLocaleString('en-US',{maximumFractionDigits:0});
+}
+function roiFmtTok(n) {
+  if(n>=1e6) return (n/1e6).toFixed(1)+'M';
+  if(n>=1000) return (n/1000).toFixed(0)+'K';
+  return n.toFixed(0);
+}
+function roiPct(n) {
+  if(!isFinite(n)) return '∞';
+  if(n>999999) return '>1M%';
+  return n.toFixed(1)+'%';
+}
+function roiEl(id) { return document.getElementById(id); }
+function roiSet(id,v) { const e=roiEl(id); if(e) e.textContent=v; }
+function roiSetCls(id,cls) {
+  const e=roiEl(id); if(!e) return;
+  ['g','a','r','b'].forEach(c=>e.classList.remove(c));
+  if(cls) e.classList.add(cls);
+}
+function roiBlended(model,inFrac) {
+  return (model.inPM*inFrac + model.outPM*(1-inFrac))/1_000_000;
+}
+
+function setROIRoute(route) {
+  roiEl('roi-route-human').style.display = route==='human'?'':'none';
+  roiEl('roi-route-agent').style.display = route==='agent'?'':'none';
+  document.querySelectorAll('.roi-tab').forEach((t,i)=>{
+    t.classList.toggle('active',(i===0&&route==='human')||(i===1&&route==='agent'));
+  });
+  if(route==='human') calcHumanROI(); else calcAgentROI();
+}
+
+function roiUpdateRatioH() {
+  const v=parseInt(roiEl('h-inratio').value);
+  roiSet('h-inratio-disp',v+'%'); roiSet('h-outratio-disp',(100-v)+'%');
+}
+function roiUpdateRatioA() {
+  const v=parseInt(roiEl('a-inratio').value);
+  roiSet('a-inratio-disp',v+'%'); roiSet('a-outratio-disp',(100-v)+'%');
+}
+
+function calcHumanROI() {
+  const salary   = parseFloat(roiEl('h-salary')?.value)   || 150000;
+  const overhead = parseFloat(roiEl('h-overhead')?.value) || 28;
+  const tokens   = parseFloat(roiEl('h-tokens')?.value)   || 250000;
+  const inRatio  = (parseFloat(roiEl('h-inratio')?.value) || 30)/100;
+  const value    = parseFloat(roiEl('h-value')?.value)    || 0;
+  const modelId  = roiEl('h-model')?.value;
+  const role     = roiEl('roiRole')?.value || 'Role';
+  const model    = ROI_MODELS.find(m=>m.id===modelId)||ROI_MODELS[1];
+
+  const ohAmt       = salary*(overhead/100);
+  const ratePT      = roiBlended(model,inRatio);
+  const monthlyTok  = tokens*ratePT;
+  const annualTok   = monthlyTok*12;
+  const total       = salary+ohAmt+annualTok;
+  const monthly     = total/12;
+  const roi         = value>0?(value-total)/total*100:null;
+  const payback     = value>0?total/value*12:null;
+
+  roiSet('h-out-role-note', role);
+  roiSet('h-out-salary',    roiFull(salary));
+  roiSet('h-out-oh',        roiFull(ohAmt));
+  roiSet('h-out-oh-note',   overhead+'% of salary');
+  roiSet('h-out-tok',       roiFull(annualTok));
+  roiSet('h-out-tok-note',  roiFmtTok(tokens)+' tok/mo · '+model.name);
+  roiSet('h-out-tokdetail',
+    roiFmtTok(tokens)+' tok/mo · '+
+    roiFmtTok(tokens*inRatio)+' in @ $'+model.inPM.toFixed(2)+'/M + '+
+    roiFmtTok(tokens*(1-inRatio))+' out @ $'+model.outPM.toFixed(2)+'/M'+
+    ' = '+roiC(monthlyTok)+'/mo → '+roiFull(annualTok)+'/yr'
+  );
+  roiSet('h-out-total',   roiFull(total));
+  roiSet('h-out-monthly', roiC(monthly));
+
+  if(roi!==null) {
+    roiSet('h-out-roi', roiPct(roi));
+    roiSetCls('h-out-roi', roi>=0?'g':'r');
+  } else { roiSet('h-out-roi','—'); roiSetCls('h-out-roi','a'); }
+
+  if(payback!==null) {
+    roiSet('h-out-payback', payback.toFixed(1)+' mo');
+    roiSetCls('h-out-payback', payback<=6?'g':payback<=12?'b':'a');
+  } else { roiSet('h-out-payback','—'); }
+
+  roiBuildSvg('roi-chart-human', [
+    { pts: buildRampCost(total),         color:'#ffb020', width:2 },
+    { pts: buildRampValue(value),        color:'#00ffa3', width:2, fill:true },
+  ], { breakeven: findBreakeven(total, value) });
+}
+
+function buildRampCost(totalCost) {
+  const mc=totalCost/12; let c=0; const a=[];
+  for(let i=0;i<12;i++){c+=mc; a.push(c);} return a;
+}
+function buildRampValue(annualValue) {
+  const RAMP=[.40,.55,.70,.85,.92,1,1,1,1,1,1,1];
+  const mv=annualValue/12; let c=0; const a=[];
+  for(let i=0;i<12;i++){c+=mv*RAMP[i]; a.push(c);} return a;
+}
+function findBreakeven(totalCost,annualValue) {
+  const cost=buildRampCost(totalCost), val=buildRampValue(annualValue);
+  return cost.findIndex((c,i)=>val[i]>=c);
+}
+
+function calcAgentROI() {
+  const orchCount  = parseInt(roiEl('a-orch-count')?.value)   ||1;
+  const orchTok    = parseFloat(roiEl('a-orch-tokens')?.value)||500000;
+  const wrkCount   = parseInt(roiEl('a-worker-count')?.value) ||5;
+  const wrkTok     = parseFloat(roiEl('a-worker-tokens')?.value)||250000;
+  const inRatio    = (parseFloat(roiEl('a-inratio')?.value)   ||30)/100;
+  const humanCount = parseInt(roiEl('a-human-count')?.value)  ||3;
+  const humanCost  = parseFloat(roiEl('a-human-cost')?.value) ||180000;
+  const orchModel  = ROI_MODELS.find(m=>m.id===roiEl('a-orch-model')?.value)||ROI_MODELS[0];
+  const wrkModel   = ROI_MODELS.find(m=>m.id===roiEl('a-worker-model')?.value)||ROI_MODELS[1];
+
+  const orchMo    = orchCount*orchTok*roiBlended(orchModel,inRatio);
+  const wrkMo     = wrkCount*wrkTok*roiBlended(wrkModel,inRatio);
+  const totalMo   = orchMo+wrkMo;
+  const annAgent  = totalMo*12;
+  const humanAnn  = humanCount*humanCost;
+  const savings   = humanAnn-annAgent;
+  const roi       = annAgent>0?savings/annAgent*100:0;
+  const totalAg   = orchCount+wrkCount;
+  const totalTok  = orchCount*orchTok+wrkCount*wrkTok;
+
+  roiSet('a-out-orch-note',        orchCount+' agent(s) · '+orchModel.name);
+  roiSet('a-out-worker-note',      wrkCount+' agents · '+wrkModel.name);
+  roiSet('a-out-total-tok-note',   totalAg+' agents · '+roiFmtTok(totalTok)+' tok/mo');
+  roiSet('a-out-orch-monthly',     roiC(orchMo)+'/mo');
+  roiSet('a-out-worker-monthly',   roiC(wrkMo)+'/mo');
+  roiSet('a-out-monthly',          roiC(totalMo)+'/mo');
+  roiSet('a-out-annual',           roiFull(annAgent));
+  roiSet('a-bar-agent-val',        roiFull(annAgent));
+  roiSet('a-bar-human-val',        roiFull(humanAnn));
+  roiSet('a-out-savings',          (savings>=0?'':'-')+roiFull(Math.abs(savings)));
+  roiSet('a-out-roi',              roiPct(roi));
+  roiSet('a-out-agents-total',     totalAg);
+  roiSet('a-out-cost-per-agent',   roiC(totalMo/totalAg)+'/mo');
+
+  const maxAnn=Math.max(annAgent,humanAnn)||1;
+  const agBar=roiEl('a-bar-agent'), huBar=roiEl('a-bar-human');
+  if(agBar) agBar.style.width=Math.max(.5,annAgent/maxAnn*100)+'%';
+  if(huBar) huBar.style.width=Math.max(.5,humanAnn/maxAnn*100)+'%';
+
+  roiSetCls('a-out-roi',    roi>=0?'g':'r');
+  roiSetCls('a-out-savings',savings>=0?'g':'r');
+  const sBox=roiEl('a-savings-box');
+  if(sBox){
+    sBox.classList.toggle('neg',savings<0);
+    const lbl=sBox.querySelector('.roi-savings-lbl');
+    if(lbl) lbl.textContent=savings>=0?'Annual Savings vs. Human Team':'Annual Cost Surplus vs. Human Team';
+  }
+
+  roiSet('a-chart-note',
+    '12-month cumulative · '+roiFull(savings)+' total savings · '+
+    (savings/12>0?roiC(savings/12)+'/mo saved':'agents cost more than humans this config')
+  );
+
+  // Build chart arrays
+  let cumA=0,cumH=0,cumS=0; const aArr=[],hArr=[],sArr=[];
+  for(let i=0;i<12;i++){
+    cumA+=totalMo; cumH+=humanAnn/12; cumS+=(humanAnn/12-totalMo);
+    aArr.push(cumA); hArr.push(cumH); sArr.push(cumS);
+  }
+  roiBuildSvg('roi-chart-agent',[
+    { pts:hArr, color:'#ffb020', width:2, dashed:true },
+    { pts:aArr, color:'#4d9fff', width:2 },
+    { pts:sArr, color:'#00ffa3', width:2.5, fill:true },
+  ], { showZero:true });
+}
+
+const ROI_MONS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function roiBuildSvg(containerId, lines, opts={}) {
+  const container=roiEl(containerId); if(!container) return;
+  const W=700,H=150,PAD={t:18,r:20,b:30,l:68};
+  const cW=W-PAD.l-PAD.r, cH=H-PAD.t-PAD.b;
+  const allPts=lines.flatMap(l=>l.pts);
+  const rawMax=Math.max(...allPts), rawMin=Math.min(...allPts,0);
+  const pad=(rawMax-rawMin)*0.12;
+  const yMax=rawMax+pad, yMin=rawMin<0?rawMin-pad*.5:0, yRange=yMax-yMin||1;
+  const xS=i=>PAD.l+(i/11)*cW;
+  const yS=v=>PAD.t+cH-((v-yMin)/yRange)*cH;
+
+  let s=`<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block;">`;
+
+  for(let g=0;g<=4;g++){
+    const v=yMin+yRange*(1-g/4), y=PAD.t+(g/4)*cH;
+    s+=`<line x1="${PAD.l}" y1="${y.toFixed(1)}" x2="${W-PAD.r}" y2="${y.toFixed(1)}" stroke="#1b2436" stroke-width="1"/>`;
+    s+=`<text x="${(PAD.l-5).toFixed(1)}" y="${(y+4).toFixed(1)}" text-anchor="end" font-family="JetBrains Mono,monospace" font-size="9" fill="#6b7892" font-weight="600">${roiC(v)}</text>`;
+  }
+  if(opts.showZero&&yMin<0&&yMax>0){
+    const y0=yS(0);
+    s+=`<line x1="${PAD.l}" y1="${y0.toFixed(1)}" x2="${W-PAD.r}" y2="${y0.toFixed(1)}" stroke="#1b2436" stroke-width="1.5" stroke-dasharray="5,3"/>`;
+  }
+  for(let i=0;i<12;i++){
+    const x=xS(i);
+    s+=`<line x1="${x.toFixed(1)}" y1="${PAD.t}" x2="${x.toFixed(1)}" y2="${(PAD.t+cH).toFixed(1)}" stroke="#1b2436" stroke-width="0.5"/>`;
+    if(i%3===0||i===11) s+=`<text x="${x.toFixed(1)}" y="${(H-6).toFixed(1)}" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="9" fill="#6b7892">${ROI_MONS[i]}</text>`;
+  }
+  if(opts.breakeven!==undefined&&opts.breakeven>=0&&opts.breakeven<12){
+    const bx=xS(opts.breakeven);
+    s+=`<line x1="${bx.toFixed(1)}" y1="${PAD.t}" x2="${bx.toFixed(1)}" y2="${(PAD.t+cH).toFixed(1)}" stroke="#4d9fff" stroke-width="1.5" stroke-dasharray="4,3"/>`;
+    s+=`<rect x="${(bx-30).toFixed(1)}" y="${PAD.t}" width="60" height="13" rx="2" fill="#4d9fff" fill-opacity="0.18"/>`;
+    s+=`<text x="${bx.toFixed(1)}" y="${(PAD.t+9).toFixed(1)}" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="8" font-weight="700" fill="#4d9fff">▲ BREAKEVEN M${opts.breakeven+1}</text>`;
+  }
+  for(const line of lines){
+    const pts=line.pts;
+    const pStr=pts.map((v,i)=>`${xS(i).toFixed(1)},${yS(v).toFixed(1)}`).join(' ');
+    if(line.fill){
+      const base=yS(Math.max(yMin,0));
+      const pathD=`M${xS(0).toFixed(1)},${base.toFixed(1)} `+pts.map((v,i)=>`L${xS(i).toFixed(1)},${yS(v).toFixed(1)}`).join(' ')+` L${xS(11).toFixed(1)},${base.toFixed(1)} Z`;
+      s+=`<path d="${pathD}" fill="${line.color}" fill-opacity="0.10"/>`;
+    }
+    const dash=line.dashed?`stroke-dasharray="6,4"`:'';
+    s+=`<polyline points="${pStr}" stroke="${line.color}" fill="none" stroke-width="${line.width||1.5}" ${dash} stroke-linejoin="round" stroke-linecap="round"/>`;
+    const lx=xS(11),ly=yS(pts[11]);
+    s+=`<circle cx="${lx.toFixed(1)}" cy="${ly.toFixed(1)}" r="3.5" fill="${line.color}" stroke="#0a0e17" stroke-width="1.5"/>`;
+    const labelY=ly<PAD.t+14?ly+16:ly-5;
+    s+=`<text x="${(lx+6).toFixed(1)}" y="${labelY.toFixed(1)}" font-family="JetBrains Mono,monospace" font-size="9" font-weight="700" fill="${line.color}">${roiC(pts[11])}</text>`;
+  }
+  s+='</svg>';
+  container.innerHTML=s;
+}
+
+function roiPopulateDropdown(id,defaultId) {
+  const sel=roiEl(id); if(!sel) return;
+  ROI_MODELS.forEach(m=>{
+    const opt=document.createElement('option');
+    opt.value=m.id;
+    opt.textContent=m.name+' ('+m.prov+')  —  $'+m.inPM+'/$'+m.outPM+'/M';
+    if(m.id===defaultId) opt.selected=true;
+    sel.appendChild(opt);
+  });
+}
+
+
+function buildROIRoleSelects() {
+  if (!rolesData || !Object.keys(rolesData).length) return;
+  const roles = Object.keys(rolesData).sort();
+  roiEl('roiRole').innerHTML = roles.map(name =>
+    `<option value="${name}">${name}</option>`
+  ).join('');
+  onROIRoleChange();
+}
+
+async function onROIRoleChange() {
+  const role = roiEl('roiRole')?.value;
+  if (!role) { calcHumanROI(); return; }
+  // Auto-populate token budget from role recommender
+  try {
+    const res = await fetch('/api/recommend', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ role })
+    });
+    const data = await res.json();
+    if (data.monthly_token_budget) {
+      const tokInput = roiEl('h-tokens');
+      if (tokInput) tokInput.value = data.monthly_token_budget;
+    }
+  } catch(e) {}
+  calcHumanROI();
+}
+
+function initROICalculator() {
+  roiPopulateDropdown('h-model',       'claude-sonnet-4-6');
+  roiPopulateDropdown('a-orch-model',  'claude-opus-4-7');
+  roiPopulateDropdown('a-worker-model','claude-sonnet-4-6');
+  roiUpdateRatioH(); roiUpdateRatioA();
+  // Populate role dropdown — try now, retry until rolesData is ready
+  if (rolesData && Object.keys(rolesData).length) {
+    buildROIRoleSelects();
+  } else {
+    const _retry = setInterval(() => {
+      if (rolesData && Object.keys(rolesData).length) {
+        clearInterval(_retry);
+        buildROIRoleSelects();
+      }
+    }, 150);
+  }
+  calcAgentROI();
+}
+// ── GO ──
+initSidebarResize();
+init();
+setTimeout(initWidgetSystem, 300);
+setTimeout(initROICalculator, 100);
+</script>
+</body>
+</html>
