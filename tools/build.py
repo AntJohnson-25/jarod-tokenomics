@@ -19,10 +19,32 @@ def swap(old, new, count=1):
     html = html.replace(old, new)
 
 
-# meta description for search/sharing
+# meta description, canonical, share tags and JSON-LD for search/sharing. The author @id
+# is the same Person node anthonyjctsg.com and custombiztools.online use.
+SEO_HEAD = '''<meta name="description" content="Compare AI model prices, find cheaper models for each task, size token budgets by role, and plan AI onboarding. Runs entirely in your browser.">
+<link rel="canonical" href="https://jarod.custombiztools.online/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Custom Biz Tools">
+<meta property="og:title" content="Jarod: AI model price comparison and token budgets">
+<meta property="og:description" content="Compare AI model prices, find cheaper models for each task, and size token budgets by role. Runs entirely in your browser.">
+<meta property="og:url" content="https://jarod.custombiztools.online/">
+<meta name="twitter:card" content="summary">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "Jarod",
+  "alternateName": "Jarod Tokenomics Arbitrage",
+  "url": "https://jarod.custombiztools.online/",
+  "applicationCategory": "BusinessApplication",
+  "operatingSystem": "Web",
+  "description": "Compare AI model prices, find cheaper models for each task, size token budgets by role, and plan AI onboarding. Works with Anthropic and OpenAI keys and runs entirely in your browser.",
+  "isPartOf": { "@type": "WebSite", "@id": "https://custombiztools.online/#website", "name": "Custom Biz Tools", "url": "https://custombiztools.online/" },
+  "author": { "@type": "Person", "@id": "https://anthonyjctsg.com/#person", "name": "Anthony C Johnson", "url": "https://anthonyjctsg.com/" }
+}
+</script>'''
 swap('<title>Jarod — Tokenomics Arbitrage</title>',
-     '<title>Jarod — Tokenomics Arbitrage</title>\n'
-     '<meta name="description" content="Compare AI model prices, find cheaper models for each task, size token budgets by role, and plan AI onboarding. Runs entirely in your browser.">')
+     '<title>Jarod — Tokenomics Arbitrage</title>\n' + SEO_HEAD)
 
 # engine goes in before the dashboard script so fetch('/api/...') is already served locally
 marker = "<script>\n// ── STATE ──"
